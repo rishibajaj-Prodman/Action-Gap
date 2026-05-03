@@ -218,6 +218,13 @@ export default function ControlPage() {
       })
       .eq("cohort", cohort);
     await supabase.from("responses").delete().eq("cohort", cohort);
+    // Reactivate any participants that End may have deactivated, so the
+    // same group can replay. Reset is a "rewind to fresh state" — the
+    // roster comes back live.
+    await supabase
+      .from("participants")
+      .update({ active: true })
+      .eq("cohort", cohort);
     setResponses((prev) => ({ ...prev, [cohort]: [] }));
   }
 
@@ -605,7 +612,7 @@ function CohortColumn({
 
             <div className="flex justify-center gap-4 text-center text-xs">
               <a
-                href={`/presenter/${cohort}/mirror`}
+                href={`/poster/${cohort}`}
                 target="_blank"
                 rel="noreferrer"
                 className="hover:underline"
@@ -639,7 +646,7 @@ function CohortColumn({
             </p>
             <div className="flex flex-col gap-1.5 text-sm">
               <a
-                href={`/presenter/${cohort}/mirror`}
+                href={`/poster/${cohort}`}
                 target="_blank"
                 rel="noreferrer"
                 className="hover:underline"
