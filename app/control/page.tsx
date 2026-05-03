@@ -288,6 +288,8 @@ export default function ControlPage() {
         </div>
       </div>
 
+      <ShareUrlsPanel />
+
       <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-3">
         {COHORTS.map((cohort) => (
           <CohortColumn
@@ -664,6 +666,84 @@ function CohortColumn({
             </button>
           </>
         )}
+      </div>
+    </section>
+  );
+}
+
+function CopyButton({
+  path,
+  label,
+  cohortColor,
+}: {
+  path: string;
+  label: string;
+  cohortColor?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  function copy() {
+    if (typeof window === "undefined") return;
+    const url = `${window.location.origin}${path}`;
+    void navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      className="rounded-md border px-2.5 py-1 text-xs transition-opacity hover:opacity-80"
+      style={{
+        borderColor: cohortColor ?? HAIRLINE,
+        color: copied ? TEAL : cohortColor ?? BONE,
+      }}
+      title={path}
+    >
+      {copied ? "✓ Copied" : `📋 ${label}`}
+    </button>
+  );
+}
+
+function ShareUrlsPanel() {
+  return (
+    <section
+      className="mt-6 rounded-md border p-4"
+      style={{ borderColor: HAIRLINE, backgroundColor: "#15110F" }}
+    >
+      <div
+        className="mb-3 text-xs font-bold uppercase tracking-widest"
+        style={{ color: ASH }}
+      >
+        Share URLs · click to copy
+      </div>
+      <div className="flex flex-col gap-2 text-sm">
+        {COHORTS.map((cohort) => {
+          const color = getTheme(cohort).primary;
+          return (
+            <div key={cohort} className="flex flex-wrap items-center gap-3">
+              <span
+                className="w-24 font-bold uppercase tracking-wider"
+                style={{ color }}
+              >
+                {cohort}
+              </span>
+              <CopyButton path={`/poster/${cohort}`} label="Poster" cohortColor={color} />
+              <CopyButton path={`/phone/${cohort}`} label="Phone (join)" cohortColor={color} />
+              <CopyButton path={`/insights/${cohort}`} label="Insights" cohortColor={color} />
+              <a
+                href={`/poster/${cohort}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs hover:underline"
+                style={{ color: ASH }}
+              >
+                open ↗
+              </a>
+            </div>
+          );
+        })}
       </div>
     </section>
   );
