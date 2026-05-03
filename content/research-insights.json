@@ -1,0 +1,22 @@
+{
+  "mirror": {
+    "headline": "Pluralistic ignorance is real",
+    "claim": "People underestimate climate support by 20–30 percentage points.",
+    "citation": "Andre, Boneva, Chopra & Falk · Nature Climate Change (2024)"
+  },
+  "funnel": {
+    "headline": "The intent–behavior gap",
+    "claim": "Intention explains only ~27% of the variance in pro-environmental behavior.",
+    "citation": "Bamberg & Möser · Journal of Environmental Psychology (2007)"
+  },
+  "court": {
+    "headline": "The corporate say-do gap",
+    "claim": "63% of Forbes Global 2000 firms have net-zero pledges. Only 7% are credible.",
+    "citation": "Net Zero Tracker / NewClimate Institute (2025)"
+  },
+  "reflection": {
+    "headline": "Identity drives behavior",
+    "claim": "Behavior follows from salient identity. The dragons we name are the ones we can slay.",
+    "citation": "Oyserman · Identity-Based Motivation (2009)"
+  }
+}

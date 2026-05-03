@@ -1,0 +1,39 @@
+{
+  "pairs": [
+    {
+      "id": 1,
+      "company": "BP",
+      "year": 2020,
+      "quote": "Today we set a new ambition to become a net zero company by 2050. Our strategy aims for a 40% reduction in our oil and gas production by 2030.",
+      "reality": "By February 2025, BP raised oil and gas capex to $10 billion per year, cut renewable spending to ~$1.5–2 billion, and removed the 2030 production cut entirely. The Scope 3 absolute reduction target was replaced with a softer ~10% intensity goal."
+    },
+    {
+      "id": 2,
+      "company": "Microsoft",
+      "year": 2020,
+      "quote": "By 2030 Microsoft will be carbon negative, and by 2050 we will remove from the environment all the carbon the company has emitted, either directly or by electrical consumption, since it was founded in 1975.",
+      "reality": "Microsoft's 2024 Sustainability Report disclosed total emissions UP 29.1% from the 2020 baseline, driven by AI-related electricity demand and data center construction. Microsoft was among 239 companies delisted by SBTi in 2024."
+    },
+    {
+      "id": 3,
+      "company": "Unilever",
+      "year": 2020,
+      "quote": "We will halve our use of virgin plastic by 2025, ensure all plastic packaging is reusable, recyclable or compostable by 2025, and reduce our absolute use of plastic packaging by more than 100,000 tonnes.",
+      "reality": "In 2024 under CEO Hein Schumacher, Unilever abandoned the 2025 plastic target and replaced it with 30% reduction by 2026 and 40% by 2028 — framed as 'unashamedly realistic.' SBTi delisted Unilever's net-zero commitment that same year."
+    },
+    {
+      "id": 4,
+      "company": "BASF",
+      "year": 2021,
+      "quote": "BASF is committed to climate-neutral production by 2050. By 2030, we plan to reduce our greenhouse gas emissions by 25% compared to 2018, despite growth in our Verbund production sites and global expansion.",
+      "reality": "BASF has lobbied EU regulators to soften the Carbon Border Adjustment Mechanism and emissions trading rules, while expanding fossil-intensive operations in China. The 2030 target excludes most Scope 3 supply-chain emissions — which dwarf its direct emissions."
+    },
+    {
+      "id": 5,
+      "company": "Volkswagen",
+      "year": 2021,
+      "quote": "We will become a net carbon-neutral company by 2050 at the latest. We are systematically reducing greenhouse gas emissions across our entire value chain in line with the 1.5°C Paris target.",
+      "reality": "VW has lobbied to delay the EU's 2035 ban on combustion engines. ICE vehicles still generate the majority of revenue and profits. The 2015 Dieselgate scandal continues to surface, including confirmed evidence of executive awareness of the cheating."
+    }
+  ]
+}
