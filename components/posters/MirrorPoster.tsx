@@ -282,6 +282,27 @@ export default function MirrorPoster({
   const state = session?.reveal_state ?? "collecting";
   const namesList = participants.map((p) => p.name).join(", ");
 
+  const statusPill = !locked && !compact ? (
+    <div
+      className="pointer-events-none fixed left-1/2 top-32 z-40 -translate-x-1/2 rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-widest backdrop-blur"
+      style={{
+        backgroundColor:
+          state === "reveal"
+            ? "rgba(91, 168, 157, 0.18)"
+            : `${cohortColor}22`,
+        borderColor:
+          state === "reveal"
+            ? "rgba(91, 168, 157, 0.5)"
+            : `${cohortColor}66`,
+        color: state === "reveal" ? TEAL_AFFIRMATIVE : cohortColor,
+      }}
+    >
+      {state === "reveal"
+        ? "● Revealed"
+        : `● Collecting · ${cappedSubmitted} / ${totalRoster}`}
+    </div>
+  ) : null;
+
   const toastsEl = (
     <div className="pointer-events-none fixed top-6 right-6 z-50 flex flex-col items-end gap-2">
       <AnimatePresence>
@@ -543,6 +564,7 @@ export default function MirrorPoster({
   if (embedded) {
     return (
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden px-12 py-6 text-white">
+        {statusPill}
         {toastsEl}
         {signatureEl}
         {insightEl}

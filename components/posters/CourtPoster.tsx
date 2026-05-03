@@ -529,9 +529,29 @@ export default function CourtPoster({
     <ResearchInsight round="court" show={showInsight} />
   ) : null;
 
+  const statusPill = !locked && !compact ? (
+    <div
+      className="pointer-events-none fixed left-1/2 top-32 z-40 -translate-x-1/2 rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-widest backdrop-blur"
+      style={{
+        backgroundColor:
+          isRevealing
+            ? "rgba(91, 168, 157, 0.18)"
+            : `${cohortColor}22`,
+        borderColor:
+          isRevealing
+            ? "rgba(91, 168, 157, 0.5)"
+            : `${cohortColor}66`,
+        color: isRevealing ? TEAL : cohortColor,
+      }}
+    >
+      {isRevealing ? "● Revealed" : `● Collecting · ${cappedX} / ${Y}`}
+    </div>
+  ) : null;
+
   if (embedded) {
     return (
       <>
+        {statusPill}
         {signatureEl}
         {insightEl}
         {inner}

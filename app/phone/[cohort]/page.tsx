@@ -11,6 +11,7 @@ import CourtPhone from "@/components/phones/CourtPhone";
 import ReflectionPhone from "@/components/phones/ReflectionPhone";
 import { Mascot } from "@/components/mascots/Mascot";
 import { CohortPattern } from "@/components/patterns/CohortPattern";
+import { Avatar } from "@/components/Avatar";
 
 const ROUND_INTRO: Record<
   string,
@@ -43,8 +44,11 @@ export default function PhoneCohortPage() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [currentRound, setCurrentRound] = useState<string | null | undefined>(undefined);
+  const [revealState, setRevealState] = useState<string | null | undefined>(undefined);
   const [roundIntro, setRoundIntro] = useState<string | null>(null);
+  const [showRevealFlash, setShowRevealFlash] = useState(false);
   const prevRoundRef = useRef<string | null | undefined>(undefined);
+  const prevRevealStateRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
     if (!cohort) return;
@@ -92,10 +96,13 @@ export default function PhoneCohortPage() {
     (async () => {
       const { data } = await supabase
         .from("sessions")
-        .select("current_round")
+        .select("current_round, reveal_state")
         .eq("cohort", cohort)
         .single();
-      if (active) setCurrentRound((data?.current_round as string | null) ?? null);
+      if (active) {
+        setCurrentRound((data?.current_round as string | null) ?? null);
+        setRevealState((data?.reveal_state as string | null) ?? null);
+      }
     })();
 
     const channelId = Math.random().toString(36).slice(2, 10);
@@ -110,8 +117,12 @@ export default function PhoneCohortPage() {
           filter: `cohort=eq.${cohort}`,
         },
         (payload) => {
-          const next = (payload.new as { current_round?: string | null })?.current_round;
-          setCurrentRound(next ?? null);
+          const row = payload.new as {
+            current_round?: string | null;
+            reveal_state?: string | null;
+          };
+          setCurrentRound(row?.current_round ?? null);
+          setRevealState(row?.reveal_state ?? null);
         }
       )
       .subscribe();
@@ -134,6 +145,18 @@ export default function PhoneCohortPage() {
     const t = setTimeout(() => setRoundIntro(null), 1600);
     return () => clearTimeout(t);
   }, [currentRound]);
+
+  useEffect(() => {
+    const prev = prevRevealStateRef.current;
+    prevRevealStateRef.current = revealState ?? null;
+
+    if (prev === undefined) return;
+    if (revealState !== "reveal" || prev === "reveal") return;
+
+    setShowRevealFlash(true);
+    const t = setTimeout(() => setShowRevealFlash(false), 2200);
+    return () => clearTimeout(t);
+  }, [revealState]);
 
   async function handleJoin() {
     const trimmed = name.trim();
@@ -177,6 +200,37 @@ export default function PhoneCohortPage() {
     >
       <CohortPattern cohort={cohort} opacity={0.03} />
       <AnimatePresence>
+        {showRevealFlash && (
+          <motion.div
+            key="reveal-flash"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6 text-center"
+            style={{
+              backgroundColor: "#0A0908",
+              paddingTop: "env(safe-area-inset-top)",
+              paddingBottom: "env(safe-area-inset-bottom)",
+            }}
+          >
+            <div
+              className="text-sm font-bold uppercase tracking-[0.3em]"
+              style={{ color: "#5BA89D" }}
+            >
+              ✨ Result revealed
+            </div>
+            <p className="mt-6 text-4xl font-bold" style={{ color: "#F5F1E8" }}>
+              Watch the screen.
+            </p>
+            <p className="mt-2 text-sm" style={{ color: "#8B8680" }}>
+              The {cohort} are seeing it now.
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {roundIntro && ROUND_INTRO[roundIntro] && (
           <motion.div
             key={roundIntro}
@@ -215,6 +269,20 @@ export default function PhoneCohortPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {mode === "joined" && storedName && (
+        <div
+          className="pointer-events-none fixed right-4 top-4 z-20 flex items-center gap-2 rounded-full border px-2 py-1 text-xs"
+          style={{
+            backgroundColor: "rgba(245,241,232,0.05)",
+            borderColor: "rgba(245,241,232,0.1)",
+            paddingTop: "max(env(safe-area-inset-top), 4px)",
+          }}
+        >
+          <Avatar name={storedName} size={22} />
+          <span style={{ color: cohortColor }}>{storedName}</span>
+        </div>
+      )}
 
       <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col">
         {mode === "loading" && null}
