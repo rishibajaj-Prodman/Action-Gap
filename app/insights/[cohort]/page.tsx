@@ -1,37 +1,49 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  motion,
+  useInView,
+  useScroll,
+  useTransform,
+  type MotionValue,
+} from "framer-motion";
 import { supabase } from "@/lib/supabase";
-import { useTheme } from "@/lib/theme";
+import { useTheme, type CohortTheme } from "@/lib/theme";
 import { useVisibilityRefetch } from "@/lib/useVisibilityRefetch";
 import { Mascot } from "@/components/mascots/Mascot";
+import { Avatar } from "@/components/Avatar";
 import {
   generatePanels,
-  PAIR_NAMES,
   type Panel,
-  type MirrorData,
-  type FunnelData,
-  type CourtData,
-  type ReflectionData,
   type ParticipantRow,
   type ResponseRow,
 } from "@/lib/insights/generatePanels";
 
-const INK = "#0A0908";
-const BONE = "#F5F1E8";
-const ASH = "#8B8680";
+const PAPER = "#F5F1E8";
+const INK = "#1A1A1A";
+const ASH = "#5A5650";
+const HAIR = "rgba(26,26,26,0.12)";
 const TEAL = "#5BA89D";
 const CLAY = "#C66B5C";
-const CARD_BG = "#FAF6EC";
-const CARD_INK = "#1A1A1A";
-const CARD_HAIR = "rgba(26,26,26,0.12)";
+
+const SERIF = 'Georgia, "Times New Roman", serif';
+
+const SPREAD_EMOJI: Record<string, string> = {
+  cover: "✦",
+  gap: "🪞",
+  funnel: "🌀",
+  court: "⚖️",
+  dragons: "🐉",
+  credits: "📸",
+};
 
 export default function InsightsPage() {
   const params = useParams<{ cohort: string }>();
   const cohort = decodeURIComponent(params?.cohort ?? "");
   const theme = useTheme(cohort);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
   const [responses, setResponses] = useState<ResponseRow[]>([]);
@@ -57,15 +69,25 @@ export default function InsightsPage() {
     fetchData();
     const channelId = Math.random().toString(36).slice(2, 10);
     const channel = supabase
-      .channel(`insights-panels-${cohort}-${channelId}`)
+      .channel(`insights-zine-${cohort}-${channelId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "responses", filter: `cohort=eq.${cohort}` },
+        {
+          event: "*",
+          schema: "public",
+          table: "responses",
+          filter: `cohort=eq.${cohort}`,
+        },
         () => fetchData()
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "participants", filter: `cohort=eq.${cohort}` },
+        {
+          event: "*",
+          schema: "public",
+          table: "participants",
+          filter: `cohort=eq.${cohort}`,
+        },
         () => fetchData()
       )
       .subscribe();
@@ -80,863 +102,916 @@ export default function InsightsPage() {
     () => generatePanels(participants, responses),
     [participants, responses]
   );
-
-  const [openPanel, setOpenPanel] = useState<Panel | null>(null);
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpenPanel(null);
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
-  return (
-    <main className="min-h-screen" style={{ backgroundColor: BONE, color: CARD_INK }}>
-      <header
-        className="flex items-center justify-between border-b px-12 py-6"
-        style={{ borderColor: CARD_HAIR, backgroundColor: BONE }}
-      >
-        <div className="flex items-center gap-4">
-          <Mascot cohort={cohort} size={40} />
-          <div>
-            <div
-              className="text-xs font-bold uppercase tracking-[0.3em]"
-              style={{ color: theme.primary }}
-            >
-              Insights briefing
-            </div>
-            <h1 className="text-3xl font-bold uppercase tracking-wider" style={{ color: CARD_INK }}>
-              {cohort}
-            </h1>
-          </div>
-        </div>
-        <span className="text-sm italic" style={{ color: "#5A5650" }}>
-          {theme.tagline}
-        </span>
-      </header>
-
-      <motion.section
-        className="mx-auto max-w-7xl px-8 py-12"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-      >
-        {panels.length === 0 ? (
-          <div className="py-32 text-center">
-            <p
-              className="font-serif text-3xl italic"
-              style={{
-                color: ASH,
-                fontFamily: 'Georgia, "Times New Roman", serif',
-              }}
-            >
-              Insights will appear when the session ends.
-            </p>
-            <p className="mt-4 text-sm" style={{ color: "#5A5650" }}>
-              The {cohort} are still on the trail.
-            </p>
-          </div>
-        ) : (
-          <MagazineGrid
-            panels={panels}
-            accent={theme.primary}
-            onOpen={(p) => setOpenPanel(p)}
-          />
-        )}
-      </motion.section>
-
-      <AnimatePresence>
-        {openPanel && (
-          <PanelModal
-            panel={openPanel}
-            accent={theme.primary}
-            participants={participants}
-            responses={responses}
-            onClose={() => setOpenPanel(null)}
-          />
-        )}
-      </AnimatePresence>
-
-      <footer
-        className="border-t px-12 py-6 text-xs"
-        style={{ borderColor: CARD_HAIR, color: "#5A5650" }}
-      >
-        The Action Gap · {cohort} · HHL Leipzig MBA
-      </footer>
-    </main>
+  const find = useMemo(
+    () =>
+      <T extends Panel["type"]>(t: T) =>
+        panels.find((p) => p.type === t) as
+          | Extract<Panel, { type: T }>
+          | undefined,
+    [panels]
   );
-}
-
-function MagazineGrid({
-  panels,
-  accent,
-  onOpen,
-}: {
-  panels: Panel[];
-  accent: string;
-  onOpen: (p: Panel) => void;
-}) {
-  const find = <T extends Panel["type"]>(t: T) =>
-    panels.find((p) => p.type === t) as Extract<Panel, { type: T }> | undefined;
 
   const gap = find("gap");
-  const dragons = find("dragons");
-  const court = find("court");
   const funnel = find("funnel");
+  const court = find("court");
+  const dragons = find("dragons");
   const outlier = find("outlier");
   const alignment = find("alignment");
   const resilience = find("resilience");
 
-  const secondHero: Panel | undefined = dragons ?? court ?? funnel;
-  const tertiary: Panel[] = (
-    [court, funnel, outlier, alignment, resilience] as (Panel | undefined)[]
-  ).filter((p): p is Panel => !!p && p !== secondHero);
+  const builtBy = participants.map((p) => p.name).filter(Boolean);
 
-  function clickable(p: Panel, hero = false) {
-    return (
-      <button
-        type="button"
-        onClick={() => onOpen(p)}
-        className="group block h-full w-full cursor-pointer text-left transition-all duration-200 hover:-translate-y-1"
-        style={{ filter: "drop-shadow(0 0 0 transparent)" }}
-      >
-        <div
-          className="h-full transition-shadow duration-200"
-          style={{
-            boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLDivElement).style.boxShadow = `0 8px 24px rgba(0,0,0,0.10), 0 0 0 1px ${accent}55`;
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)";
-          }}
-        >
-          <PanelCard panel={p} accent={accent} hero={hero} />
-        </div>
-      </button>
-    );
+  const { scrollYProgress } = useScroll({ target: containerRef });
+  const urgencyWidth = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
+
+  if (panels.length === 0) {
+    return <EmptyState cohort={cohort} theme={theme} />;
   }
 
-  const clickableHero = (p: Panel) => clickable(p, true);
-
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-12">
-      {gap && <div className="md:col-span-12">{clickableHero(gap)}</div>}
-      {secondHero && <div className="md:col-span-7">{clickableHero(secondHero)}</div>}
-      {tertiary[0] && <div className="md:col-span-5">{clickable(tertiary[0])}</div>}
-      {tertiary[1] && <div className="md:col-span-5">{clickable(tertiary[1])}</div>}
-      {tertiary[2] && <div className="md:col-span-7">{clickable(tertiary[2])}</div>}
-      {tertiary.slice(3).map((p, i) => (
-        <div key={`tail-${i}`} className="md:col-span-6">
-          {clickable(p)}
-        </div>
-      ))}
+    <main
+      ref={containerRef}
+      className="relative min-h-screen overflow-x-hidden"
+      style={{ backgroundColor: PAPER, color: INK }}
+    >
+      <UrgencyBar width={urgencyWidth} accent={theme.primary} />
+      <CohortPattern theme={theme} />
+
+      <CoverSpread cohort={cohort} theme={theme} />
+      {gap && (
+        <GapSpread
+          panel={gap}
+          outlier={outlier}
+          theme={theme}
+        />
+      )}
+      {funnel && (
+        <FunnelSpread
+          panel={funnel}
+          resilience={resilience}
+          theme={theme}
+        />
+      )}
+      {court && (
+        <CourtSpread
+          panel={court}
+          alignment={alignment}
+          theme={theme}
+        />
+      )}
+      {dragons && <DragonsSpread panel={dragons} theme={theme} />}
+      <CreditsSpread cohort={cohort} theme={theme} builtBy={builtBy} />
+    </main>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Chrome                                                             */
+/* ------------------------------------------------------------------ */
+
+function UrgencyBar({
+  width,
+  accent,
+}: {
+  width: MotionValue<string>;
+  accent: string;
+}) {
+  return (
+    <div
+      className="fixed left-0 right-0 top-0 z-50 h-1"
+      style={{ backgroundColor: "rgba(26,26,26,0.05)" }}
+    >
+      <motion.div
+        className="h-full"
+        style={{
+          width,
+          background: `linear-gradient(90deg, ${accent} 0%, #E8964F 60%, #C24232 100%)`,
+        }}
+      />
     </div>
   );
 }
 
-function PanelCard({
-  panel,
-  accent,
-  hero,
-}: {
-  panel: Panel;
-  accent: string;
-  hero?: boolean;
-}) {
-  switch (panel.type) {
-    case "gap":
-      return <GapPanel panel={panel} accent={accent} hero />;
-    case "funnel":
-      return <FunnelPanel panel={panel} accent={accent} hero={hero} />;
-    case "court":
-      return <CourtPanel panel={panel} accent={accent} hero={hero} />;
-    case "dragons":
-      return <DragonsPanel panel={panel} accent={accent} hero={hero} />;
-    case "outlier":
-      return <OutlierPanel panel={panel} accent={accent} />;
-    case "alignment":
-      return <AlignmentPanel panel={panel} accent={accent} />;
-    case "resilience":
-      return <ResiliencePanel panel={panel} accent={accent} />;
+function CohortPattern({ theme }: { theme: CohortTheme }) {
+  if (theme.pattern === "sine-waves") {
+    return (
+      <svg
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-0 w-full opacity-[0.06]"
+        viewBox="0 0 800 120"
+        preserveAspectRatio="none"
+        height="240"
+      >
+        <path
+          d="M0 60 Q 100 20, 200 60 T 400 60 T 600 60 T 800 60"
+          stroke={theme.deep}
+          strokeWidth="2"
+          fill="none"
+        />
+        <path
+          d="M0 80 Q 100 40, 200 80 T 400 80 T 600 80 T 800 80"
+          stroke={theme.deep}
+          strokeWidth="2"
+          fill="none"
+        />
+      </svg>
+    );
   }
-}
-
-function PanelShell({
-  eyebrow,
-  headline,
-  question,
-  accent,
-  children,
-  hero = false,
-}: {
-  eyebrow: string;
-  headline: string;
-  question: string;
-  accent: string;
-  children: React.ReactNode;
-  hero?: boolean;
-}) {
+  if (theme.pattern === "diagonal-hatch") {
+    return (
+      <svg
+        className="pointer-events-none fixed inset-0 z-0 h-full w-full opacity-[0.04]"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <pattern
+            id="hatch"
+            patternUnits="userSpaceOnUse"
+            width="22"
+            height="22"
+            patternTransform="rotate(45)"
+          >
+            <line x1="0" y1="0" x2="0" y2="22" stroke={theme.deep} strokeWidth="1.4" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#hatch)" />
+      </svg>
+    );
+  }
   return (
-    <article
-      className="rounded-lg border p-8"
-      style={{
-        backgroundColor: CARD_BG,
-        borderColor: CARD_HAIR,
-        boxShadow: hero
-          ? `0 8px 24px rgba(0,0,0,0.08), 0 0 0 1px ${accent}33`
-          : "0 2px 8px rgba(0,0,0,0.04)",
-      }}
+    <svg
+      className="pointer-events-none fixed inset-x-0 top-0 z-0 w-full opacity-[0.05]"
+      viewBox="0 0 800 200"
+      preserveAspectRatio="none"
+      height="320"
     >
-      <div
-        className="text-xs font-bold uppercase tracking-[0.3em]"
-        style={{ color: accent }}
-      >
-        {eyebrow}
-      </div>
-      <h2
-        className="mt-2 font-serif leading-tight"
-        style={{
-          fontFamily: 'Georgia, "Times New Roman", serif',
-          fontSize: hero ? "2.75rem" : "2rem",
-          color: CARD_INK,
-        }}
-      >
-        {headline}
-      </h2>
-      <div className="mt-6">{children}</div>
-      <p
-        className="mt-6 border-t pt-4 text-sm italic"
-        style={{ color: "#5A5650", borderColor: CARD_HAIR }}
-      >
-        {question}
-      </p>
-    </article>
+      {[20, 50, 80, 110, 140, 170].map((y) => (
+        <path
+          key={y}
+          d={`M0 ${y} Q 200 ${y - 14}, 400 ${y} T 800 ${y}`}
+          stroke={theme.deep}
+          strokeWidth="1.2"
+          fill="none"
+        />
+      ))}
+    </svg>
   );
 }
 
-function GapPanel({
+/* ------------------------------------------------------------------ */
+/*  Spreads                                                            */
+/* ------------------------------------------------------------------ */
+
+function SpreadFrame({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={`relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-center px-8 py-24 md:px-12 ${className}`}
+    >
+      {children}
+    </section>
+  );
+}
+
+function Eyebrow({ accent, children }: { accent: string; children: React.ReactNode }) {
+  return (
+    <div
+      className="text-xs font-bold uppercase tracking-[0.4em]"
+      style={{ color: accent }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function PullQuote({ children, accent }: { children: React.ReactNode; accent: string }) {
+  return (
+    <p
+      className="font-serif text-base italic leading-relaxed"
+      style={{ fontFamily: SERIF, color: ASH, borderLeft: `3px solid ${accent}` }}
+    >
+      <span className="block pl-4">{children}</span>
+    </p>
+  );
+}
+
+function SpreadCorner({
+  spread,
+  rotate = 0,
+}: {
+  spread: keyof typeof SPREAD_EMOJI;
+  rotate?: number;
+}) {
+  return (
+    <motion.div
+      aria-hidden
+      className="pointer-events-none absolute right-6 top-6 select-none text-3xl md:right-12 md:top-12 md:text-4xl"
+      initial={{ opacity: 0, rotate: rotate - 12 }}
+      whileInView={{ opacity: 0.85, rotate }}
+      viewport={{ once: false, margin: "-25%" }}
+      transition={{ duration: 0.8, ease: "easeOut" }}
+    >
+      {SPREAD_EMOJI[spread]}
+    </motion.div>
+  );
+}
+
+/* ---- Cover ------------------------------------------------------- */
+
+function CoverSpread({ cohort, theme }: { cohort: string; theme: CohortTheme }) {
+  return (
+    <SpreadFrame className="items-center text-center">
+      <SpreadCorner spread="cover" rotate={0} />
+      <motion.div
+        initial={{ scale: 0.85, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.9, ease: "easeOut" }}
+        className="select-none text-[10rem] leading-none md:text-[12rem]"
+      >
+        {theme.emoji}
+      </motion.div>
+      <Eyebrow accent={theme.primary}>The Action Gap · Insights</Eyebrow>
+      <h1
+        className="mt-3 text-5xl font-bold leading-[1.05] tracking-tight md:text-7xl"
+        style={{ fontFamily: SERIF, color: INK }}
+      >
+        {cohort}
+      </h1>
+      <p
+        className="mt-5 max-w-2xl text-base italic md:text-lg"
+        style={{ color: ASH, fontFamily: SERIF }}
+      >
+        {theme.tagline}.
+      </p>
+      <motion.div
+        animate={{ y: [0, 8, 0] }}
+        transition={{ duration: 2.4, ease: "easeInOut", repeat: Infinity }}
+        className="mt-16 text-xs uppercase tracking-[0.4em]"
+        style={{ color: ASH }}
+      >
+        ↓ &nbsp; scroll &nbsp; ↓
+      </motion.div>
+    </SpreadFrame>
+  );
+}
+
+/* ---- Gap --------------------------------------------------------- */
+
+function GapSpread({
   panel,
-  accent,
+  outlier,
+  theme,
 }: {
   panel: Extract<Panel, { type: "gap" }>;
-  accent: string;
-  hero?: boolean;
+  outlier: Extract<Panel, { type: "outlier" }> | undefined;
+  theme: CohortTheme;
 }) {
-  const direction =
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-30% 0px" });
+
+  const directionLabel =
     panel.direction === "match"
       ? "Match"
       : panel.direction === "under"
         ? "Underestimated"
         : "Overestimated";
-  return (
-    <PanelShell
-      hero
-      eyebrow="01 · The Mirror"
-      headline="The Gap"
-      question="If we underestimated each other by this much in 60 seconds — what else are we underestimating?"
-      accent={accent}
-    >
-      <div className="flex items-end justify-around gap-6">
-        <Stat label="Predicted" value={`${panel.predictedAvg}%`} dim />
-        <div className="text-center">
-          <div className="text-xs uppercase tracking-widest" style={{ color: "#5A5650" }}>
-            Gap
-          </div>
-          <div
-            className="text-3xl font-bold tabular-nums"
-            style={{ color: accent }}
-          >
-            {panel.delta}%
-          </div>
-          <div className="text-xs uppercase" style={{ color: "#5A5650" }}>
-            {direction}
-          </div>
-        </div>
-        <Stat label="Actual" value={`${panel.actualPct}%`} bold />
-      </div>
-    </PanelShell>
-  );
-}
 
-function FunnelPanel({
-  panel,
-  accent,
-  hero,
-}: {
-  panel: Extract<Panel, { type: "funnel" }>;
-  accent: string;
-  hero?: boolean;
-}) {
-  const labels = ["Concerned", "Believe matters", "Will change", "Sustained 6mo"];
+  const headline =
+    panel.direction === "match"
+      ? `We read the room exactly right.`
+      : panel.direction === "under"
+        ? `The room cared more than the room thought.`
+        : `The room cared less than we hoped.`;
+
   return (
-    <PanelShell
-      hero={hero}
-      eyebrow="02 · The Funnel"
-      headline={`Drop-off: ${panel.dropoffPct}%`}
-      question="Where does intention turn into something else? What did we lose between believing and doing?"
-      accent={accent}
-    >
-      <div className="flex flex-col gap-2">
-        {labels.map((label, i) => (
-          <div key={label} className="flex items-center gap-3">
-            <div className="w-44 text-sm" style={{ color: "#5A5650" }}>
-              {label}
+    <SpreadFrame>
+      <SpreadCorner spread="gap" rotate={-6} />
+      <Eyebrow accent={theme.primary}>01 · The Mirror</Eyebrow>
+      <motion.h2
+        initial={{ opacity: 0, y: 18 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-20%" }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
+        className="mt-3 max-w-4xl text-4xl font-bold leading-[1.1] md:text-6xl"
+        style={{ fontFamily: SERIF, color: INK }}
+      >
+        {headline}
+      </motion.h2>
+
+      <div ref={ref} className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-12 md:gap-12">
+        <div className="md:col-span-8">
+          <div className="relative">
+            <div className="grid grid-cols-2 items-end gap-6">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={inView ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.9, ease: "easeOut" }}
+                className="text-center"
+              >
+                <div className="text-xs uppercase tracking-widest" style={{ color: ASH }}>
+                  We predicted
+                </div>
+                <div
+                  className="mt-2 text-7xl font-light tabular-nums md:text-8xl"
+                  style={{ color: ASH, fontFamily: SERIF }}
+                >
+                  {panel.predictedAvg}%
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 40, scale: 0.92 }}
+                animate={inView ? { opacity: 1, y: 0, scale: 1 } : {}}
+                transition={{ delay: 0.55, duration: 0.7, ease: "easeOut" }}
+                className="text-center"
+              >
+                <div className="text-xs uppercase tracking-widest" style={{ color: theme.primary }}>
+                  Actually
+                </div>
+                <div
+                  className="mt-2 text-8xl font-bold tabular-nums md:text-9xl"
+                  style={{ color: theme.primary, fontFamily: SERIF }}
+                >
+                  {panel.actualPct}%
+                </div>
+              </motion.div>
             </div>
-            <div
-              className="relative h-6 flex-1 overflow-hidden rounded-sm"
-              style={{ backgroundColor: "rgba(26,26,26,0.06)" }}
+
+            <motion.svg
+              className="pointer-events-none absolute inset-0 h-full w-full"
+              viewBox="0 0 100 30"
+              preserveAspectRatio="none"
             >
-              <div
-                className="h-full"
-                style={{
-                  width: `${panel.stagePct[i]}%`,
-                  backgroundColor: accent,
-                }}
+              <motion.path
+                d="M 25 18 Q 50 4, 75 12"
+                stroke={theme.primary}
+                strokeWidth="0.4"
+                fill="none"
+                strokeDasharray="2 2"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={inView ? { pathLength: 1, opacity: 0.7 } : {}}
+                transition={{ delay: 1.1, duration: 1.2, ease: "easeOut" }}
               />
-            </div>
-            <div
-              className="w-16 text-right text-sm font-semibold tabular-nums"
-              style={{ color: CARD_INK }}
-            >
-              {panel.stageCount[i]} · {panel.stagePct[i]}%
-            </div>
+            </motion.svg>
           </div>
-        ))}
-      </div>
-    </PanelShell>
-  );
-}
 
-function CourtPanel({
-  panel,
-  accent,
-  hero,
-}: {
-  panel: Extract<Panel, { type: "court" }>;
-  accent: string;
-  hero?: boolean;
-}) {
-  return (
-    <PanelShell
-      hero={hero}
-      eyebrow="03 · The Court"
-      headline={`${panel.greenwashPct}% greenwash verdicts`}
-      question="When 5 random executives all say the same things, are they all lying — or is the system rewarding the same lie?"
-      accent={accent}
-    >
-      <div className="flex flex-col gap-2">
-        {panel.perCompany.map((row) => {
-          const verdictColor =
-            row.verdict === "Greenwash"
-              ? CLAY
-              : row.verdict === "Real progress"
-                ? TEAL
-                : "#5A5650";
-          return (
-            <div
-              key={row.pairId}
-              className="flex items-center gap-4"
-            >
-              <div
-                className="w-28 text-sm font-bold uppercase tracking-wider"
-                style={{ color: CARD_INK }}
-              >
-                {row.company}
-              </div>
-              <div
-                className="relative h-4 flex-1 overflow-hidden rounded-sm"
-                style={{ backgroundColor: "rgba(26,26,26,0.06)" }}
-              >
-                {row.totalVotes > 0 && (
-                  <div className="flex h-full">
-                    <div
-                      style={{ width: `${row.greenwashPct}%`, backgroundColor: CLAY }}
-                    />
-                    <div
-                      style={{ width: `${row.realPct}%`, backgroundColor: TEAL }}
-                    />
-                  </div>
-                )}
-              </div>
-              <div
-                className="w-32 text-sm font-semibold uppercase tracking-wider"
-                style={{ color: verdictColor }}
-              >
-                {row.verdict}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </PanelShell>
-  );
-}
-
-function DragonsPanel({
-  panel,
-  accent,
-  hero,
-}: {
-  panel: Extract<Panel, { type: "dragons" }>;
-  accent: string;
-  hero?: boolean;
-}) {
-  return (
-    <PanelShell
-      hero={hero}
-      eyebrow="04 · Reflection"
-      headline="The dragons we're taking home"
-      question="Whose dragon names yours? What did you almost write but didn't?"
-      accent={accent}
-    >
-      <div className="flex flex-wrap gap-2">
-        {panel.themes.map((t) => (
-          <span
-            key={t.word}
-            className="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider"
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={inView ? { opacity: 1 } : {}}
+            transition={{ delay: 1.6, duration: 0.6 }}
+            className="mt-10 inline-flex items-baseline gap-3 rounded-full border px-5 py-2"
             style={{
-              backgroundColor: `${accent}22`,
-              color: accent,
+              borderColor: theme.primary,
+              backgroundColor: `${theme.primary}11`,
             }}
           >
-            {t.word} · {t.count}
-          </span>
-        ))}
-      </div>
-      <ul className="mt-6 flex flex-col gap-3">
-        {panel.quotes.map((q, i) => (
-          <li key={i} className="text-base italic" style={{ color: CARD_INK }}>
-            &ldquo;{q.text}&rdquo;{" "}
-            <span className="not-italic text-xs" style={{ color: "#5A5650" }}>
-              — {q.name}
+            <span className="text-xs uppercase tracking-widest" style={{ color: ASH }}>
+              {directionLabel} by
             </span>
-          </li>
+            <span
+              className="text-2xl font-bold tabular-nums"
+              style={{ color: theme.primary }}
+            >
+              {panel.delta}%
+            </span>
+          </motion.div>
+
+          <div className="mt-10 max-w-xl">
+            <PullQuote accent={theme.primary}>
+              Pluralistic ignorance — when private opinion runs ahead of what
+              we think the group believes. People underestimate how much
+              others care about climate, and the misread itself becomes the
+              barrier.
+              <span className="not-italic block mt-3 text-xs uppercase tracking-widest" style={{ color: ASH }}>
+                Andre et al., <em>Nature Climate Change</em>, 2024
+              </span>
+            </PullQuote>
+          </div>
+        </div>
+
+        {outlier && (
+          <aside className="md:col-span-4 md:pt-12">
+            <div
+              className="rounded-md border-l-4 p-5"
+              style={{ borderColor: theme.primary, backgroundColor: "#EFE9D8" }}
+            >
+              <div
+                className="text-[10px] font-bold uppercase tracking-[0.3em]"
+                style={{ color: theme.primary }}
+              >
+                · marginalia ·
+              </div>
+              <h3
+                className="mt-2 text-xl font-bold leading-tight"
+                style={{ fontFamily: SERIF, color: INK }}
+              >
+                {outlier.participantName} read the room differently.
+              </h3>
+              <p className="mt-3 text-sm" style={{ color: ASH }}>
+                Their guess was{" "}
+                <strong style={{ color: INK }}>{outlier.predicted}%</strong>.
+                The room landed at{" "}
+                <strong style={{ color: INK }}>{outlier.actualPct}%</strong>.
+                A{" "}
+                <strong style={{ color: theme.primary }}>{outlier.gap}-point</strong>{" "}
+                gap.
+              </p>
+              <p className="mt-4 text-xs italic" style={{ color: ASH }}>
+                What did this person see — or miss — that the rest of the cohort didn&rsquo;t?
+              </p>
+            </div>
+          </aside>
+        )}
+      </div>
+    </SpreadFrame>
+  );
+}
+
+/* ---- Funnel ------------------------------------------------------ */
+
+const STAGE_LABELS = [
+  "Concerned",
+  "Believe behavior matters",
+  "Will change in 2026",
+  "Sustained 6+ months",
+];
+
+function FunnelSpread({
+  panel,
+  resilience,
+  theme,
+}: {
+  panel: Extract<Panel, { type: "funnel" }>;
+  resilience: Extract<Panel, { type: "resilience" }> | undefined;
+  theme: CohortTheme;
+}) {
+  return (
+    <SpreadFrame>
+      <SpreadCorner spread="funnel" rotate={4} />
+      <Eyebrow accent={theme.primary}>02 · The Funnel</Eyebrow>
+      <motion.h2
+        initial={{ opacity: 0, y: 18 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-20%" }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
+        className="mt-3 max-w-4xl text-4xl font-bold leading-[1.1] md:text-6xl"
+        style={{ fontFamily: SERIF, color: INK }}
+      >
+        From concern to action: where we lose ourselves.
+      </motion.h2>
+
+      <div className="mt-12 grid grid-cols-1 gap-12 md:grid-cols-12">
+        <div className="md:col-span-8">
+          <div className="flex flex-col gap-3">
+            {STAGE_LABELS.map((label, i) => {
+              const pct = panel.stagePct[i];
+              const count = panel.stageCount[i];
+              return (
+                <motion.div
+                  key={label}
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-20%" }}
+                  transition={{ delay: i * 0.18, duration: 0.6, ease: "easeOut" }}
+                  className="relative h-16 w-full overflow-hidden rounded-md"
+                  style={{ backgroundColor: "rgba(26,26,26,0.05)" }}
+                >
+                  <motion.div
+                    initial={{ width: 0 }}
+                    whileInView={{ width: `${pct}%` }}
+                    viewport={{ once: true, margin: "-20%" }}
+                    transition={{
+                      delay: i * 0.18 + 0.2,
+                      duration: 0.9,
+                      ease: "easeOut",
+                    }}
+                    className="h-full"
+                    style={{ backgroundColor: theme.primary }}
+                  />
+                  <div className="absolute inset-0 flex items-center justify-between px-5">
+                    <span className="text-base font-semibold" style={{ color: INK }}>
+                      {label}
+                    </span>
+                    <span
+                      className="font-serif text-base font-semibold tabular-nums"
+                      style={{ color: INK, fontFamily: SERIF }}
+                    >
+                      {count} · {pct}%
+                    </span>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true, margin: "-20%" }}
+            transition={{
+              delay: STAGE_LABELS.length * 0.18 + 0.4,
+              duration: 0.7,
+              ease: "easeOut",
+            }}
+            className="mt-10 flex items-baseline gap-4"
+          >
+            <span
+              className="font-serif text-7xl font-bold tabular-nums md:text-8xl"
+              style={{ color: theme.primary, fontFamily: SERIF }}
+            >
+              {panel.dropoffPct}%
+            </span>
+            <span className="text-base md:text-lg" style={{ color: ASH }}>
+              dropped off between concern and sustained action
+            </span>
+          </motion.div>
+        </div>
+
+        {resilience && (
+          <aside className="md:col-span-4 md:pt-8">
+            <div
+              className="rounded-md border-l-4 p-5"
+              style={{ borderColor: TEAL, backgroundColor: "#EFE9D8" }}
+            >
+              <div
+                className="text-[10px] font-bold uppercase tracking-[0.3em]"
+                style={{ color: TEAL }}
+              >
+                · resilience ·
+              </div>
+              <h3
+                className="mt-2 text-xl font-bold leading-tight"
+                style={{ fontFamily: SERIF, color: INK }}
+              >
+                {resilience.sustained} of {resilience.total} have already done it.
+              </h3>
+              <p className="mt-3 text-sm" style={{ color: ASH }}>
+                <strong style={{ color: TEAL }}>{resilience.pct}%</strong> say
+                they&rsquo;ve sustained a major behavior change for 6+ months.
+              </p>
+              <p className="mt-4 text-xs italic" style={{ color: ASH }}>
+                What did the sustainers have access to that the rest of us didn&rsquo;t?
+              </p>
+            </div>
+          </aside>
+        )}
+      </div>
+    </SpreadFrame>
+  );
+}
+
+/* ---- Court ------------------------------------------------------- */
+
+function CourtSpread({
+  panel,
+  alignment,
+  theme,
+}: {
+  panel: Extract<Panel, { type: "court" }>;
+  alignment: Extract<Panel, { type: "alignment" }> | undefined;
+  theme: CohortTheme;
+}) {
+  return (
+    <SpreadFrame>
+      <SpreadCorner spread="court" rotate={-4} />
+      <Eyebrow accent={theme.primary}>03 · The Court</Eyebrow>
+      <motion.h2
+        initial={{ opacity: 0, y: 18 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-20%" }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
+        className="mt-3 max-w-4xl text-4xl font-bold leading-[1.1] md:text-6xl"
+        style={{ fontFamily: SERIF, color: INK }}
+      >
+        Five CEOs walked into a room.
+      </motion.h2>
+      <p
+        className="mt-4 max-w-2xl text-base italic"
+        style={{ color: ASH, fontFamily: SERIF }}
+      >
+        The {cohortName(theme)} called{" "}
+        <strong style={{ color: CLAY }}>{panel.greenwashPct}%</strong>{" "}
+        of corporate climate claims as greenwash.
+      </p>
+
+      <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-5">
+        {panel.perCompany.map((row, i) => (
+          <CompanyVerdictCard key={row.pairId} row={row} delay={i * 0.12} accent={theme.primary} />
         ))}
-      </ul>
-    </PanelShell>
-  );
-}
-
-function OutlierPanel({
-  panel,
-  accent,
-}: {
-  panel: Extract<Panel, { type: "outlier" }>;
-  accent: string;
-}) {
-  return (
-    <PanelShell
-      eyebrow="The outlier"
-      headline={`${panel.participantName} read the room differently`}
-      question="What did this person see that the rest of the cohort missed? Or vice versa?"
-      accent={accent}
-    >
-      <div className="flex items-baseline gap-8">
-        <Stat label="Their guess" value={`${panel.predicted}%`} dim />
-        <Stat label="Cohort actual" value={`${panel.actualPct}%`} bold />
-        <Stat label="Gap" value={`${panel.gap}%`} accent={accent} />
       </div>
-    </PanelShell>
-  );
-}
 
-function AlignmentPanel({
-  panel,
-  accent,
-}: {
-  panel: Extract<Panel, { type: "alignment" }>;
-  accent: string;
-}) {
-  return (
-    <PanelShell
-      eyebrow="Where we agreed and split"
-      headline={`We agreed most on ${panel.mostAgreed.company}`}
-      question="What does the consensus tell us about how this cohort reads corporate climate claims?"
-      accent={accent}
-    >
-      <div className="grid grid-cols-2 gap-6">
-        <div>
-          <div className="text-xs uppercase tracking-widest" style={{ color: "#5A5650" }}>
-            Most agreed
-          </div>
-          <div className="mt-1 text-xl font-bold" style={{ color: CARD_INK }}>
-            {panel.mostAgreed.company}
-          </div>
-          <div className="text-sm" style={{ color: accent }}>
-            {panel.mostAgreed.pct}% voted{" "}
-            {panel.mostAgreed.vote === "greenwash" ? "Greenwash" : "Real progress"}
-          </div>
-        </div>
-        <div>
-          <div className="text-xs uppercase tracking-widest" style={{ color: "#5A5650" }}>
-            Most split
-          </div>
-          <div className="mt-1 text-xl font-bold" style={{ color: CARD_INK }}>
-            {panel.mostSplit.company}
-          </div>
-          <div className="text-sm" style={{ color: "#5A5650" }}>
-            {panel.mostSplit.greenwashPct}% / {panel.mostSplit.realPct}% split
-          </div>
-        </div>
-      </div>
-    </PanelShell>
-  );
-}
-
-function ResiliencePanel({
-  panel,
-  accent,
-}: {
-  panel: Extract<Panel, { type: "resilience" }>;
-  accent: string;
-}) {
-  return (
-    <PanelShell
-      eyebrow="Resilience"
-      headline={`${panel.sustained} of ${panel.total} have already done it`}
-      question="What did the sustainers know that the rest of us didn't? Or what did they have access to?"
-      accent={accent}
-    >
-      <div className="flex items-baseline gap-3">
-        <span className="text-5xl font-bold tabular-nums" style={{ color: accent }}>
-          {panel.pct}%
-        </span>
-        <span className="text-sm" style={{ color: "#5A5650" }}>
-          sustained a major behavior change for 6+ months
-        </span>
-      </div>
-    </PanelShell>
-  );
-}
-
-function PanelModal({
-  panel,
-  accent,
-  participants,
-  responses,
-  onClose,
-}: {
-  panel: Panel;
-  accent: string;
-  participants: ParticipantRow[];
-  responses: ResponseRow[];
-  onClose: () => void;
-}) {
-  const nameByPid = new Map(participants.map((p) => [p.participant_id, p.name]));
-
-  function detailFor(panel: Panel): React.ReactNode {
-    switch (panel.type) {
-      case "gap": {
-        const mirror = responses.filter((r) => r.round === "mirror");
-        return (
-          <div>
-            <p className="mb-4 text-sm" style={{ color: "#5A5650" }}>
-              Each participant&rsquo;s prediction next to their personal
-              belief. The gap is the distance between what we thought and
-              what we said.
+      {alignment && (
+        <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-2">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-20%" }}
+            transition={{ duration: 0.6 }}
+            className="rounded-md border p-5"
+            style={{ borderColor: HAIR, backgroundColor: "#FAF6EC" }}
+          >
+            <div
+              className="text-[10px] font-bold uppercase tracking-[0.3em]"
+              style={{ color: theme.primary }}
+            >
+              · most agreed ·
+            </div>
+            <div
+              className="mt-2 text-2xl font-bold"
+              style={{ fontFamily: SERIF, color: INK }}
+            >
+              {alignment.mostAgreed.company}
+            </div>
+            <p className="mt-2 text-sm" style={{ color: ASH }}>
+              <strong style={{ color: theme.primary }}>
+                {alignment.mostAgreed.pct}%
+              </strong>{" "}
+              voted{" "}
+              {alignment.mostAgreed.vote === "greenwash" ? (
+                <strong style={{ color: CLAY }}>Greenwash</strong>
+              ) : (
+                <strong style={{ color: TEAL }}>Real progress</strong>
+              )}
+              .
             </p>
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ color: "#5A5650" }}>
-                  <th className="py-2 text-left">Name</th>
-                  <th className="py-2 text-right">Prediction</th>
-                  <th className="py-2 text-right">Belief</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mirror.map((r) => {
-                  const d = r.data as MirrorData;
-                  return (
-                    <tr key={r.id} className="border-t" style={{ borderColor: CARD_HAIR }}>
-                      <td className="py-2 font-semibold">
-                        {nameByPid.get(r.participant_id) ?? "—"}
-                      </td>
-                      <td className="py-2 text-right tabular-nums">{d.prediction}%</td>
-                      <td
-                        className="py-2 text-right font-semibold"
-                        style={{ color: d.belief ? TEAL : CLAY }}
-                      >
-                        {d.belief ? "Yes" : "No"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        );
-      }
-      case "funnel": {
-        const funnel = responses.filter((r) => r.round === "funnel");
-        return (
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ color: "#5A5650" }}>
-                <th className="py-2 text-left">Name</th>
-                <th className="py-2 text-center">Concerned</th>
-                <th className="py-2 text-center">Believes</th>
-                <th className="py-2 text-center">Will change</th>
-                <th className="py-2 text-center">Sustained</th>
-              </tr>
-            </thead>
-            <tbody>
-              {funnel.map((r) => {
-                const d = r.data as FunnelData;
-                const cell = (v: boolean) => (
-                  <td
-                    className="py-2 text-center font-semibold"
-                    style={{ color: v ? TEAL : CLAY }}
-                  >
-                    {v ? "✓" : "✕"}
-                  </td>
-                );
-                return (
-                  <tr key={r.id} className="border-t" style={{ borderColor: CARD_HAIR }}>
-                    <td className="py-2 font-semibold">
-                      {nameByPid.get(r.participant_id) ?? "—"}
-                    </td>
-                    {cell(d.stage1)}
-                    {cell(d.stage2)}
-                    {cell(d.stage3)}
-                    {cell(d.stage4)}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        );
-      }
-      case "court": {
-        const court = responses.filter((r) => r.round === "court");
-        return (
-          <table className="w-full text-xs">
-            <thead>
-              <tr style={{ color: "#5A5650" }}>
-                <th className="py-2 text-left">Name</th>
-                {Object.values(PAIR_NAMES).map((c) => (
-                  <th key={c} className="py-2 text-center">
-                    {c}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {court.map((r) => {
-                const d = r.data as CourtData;
-                return (
-                  <tr key={r.id} className="border-t" style={{ borderColor: CARD_HAIR }}>
-                    <td className="py-2 font-semibold">
-                      {nameByPid.get(r.participant_id) ?? "—"}
-                    </td>
-                    {[1, 2, 3, 4, 5].map((pid) => {
-                      const v = d.verdicts?.find((x) => x.pairId === pid);
-                      const color = v?.vote === "greenwash" ? CLAY : v?.vote === "real" ? TEAL : "#8B8680";
-                      return (
-                        <td
-                          key={pid}
-                          className="py-2 text-center font-semibold"
-                          style={{ color }}
-                        >
-                          {v ? (v.vote === "greenwash" ? "G" : "R") : "—"}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        );
-      }
-      case "dragons": {
-        const reflections = responses.filter((r) => r.round === "reflection");
-        return (
-          <ul className="flex flex-col gap-3">
-            {reflections.map((r) => (
-              <li key={r.id} className="rounded-md p-3" style={{ backgroundColor: "#F0EBDD" }}>
-                <p className="text-sm italic">
-                  &ldquo;{(r.data as ReflectionData).text}&rdquo;
-                </p>
-                <p className="mt-1 text-xs" style={{ color: "#5A5650" }}>
-                  — {nameByPid.get(r.participant_id) ?? "Anonymous"}
-                </p>
-              </li>
-            ))}
-          </ul>
-        );
-      }
-      case "outlier":
-        return (
-          <p className="text-sm" style={{ color: "#5A5650" }}>
-            <strong>{panel.participantName}</strong> predicted{" "}
-            <strong style={{ color: accent }}>{panel.predicted}%</strong> while
-            the cohort actually came in at{" "}
-            <strong style={{ color: accent }}>{panel.actualPct}%</strong>. A{" "}
-            {panel.gap}-point gap.
-          </p>
-        );
-      case "alignment":
-        return (
-          <p className="text-sm" style={{ color: "#5A5650" }}>
-            Strongest consensus: <strong>{panel.mostAgreed.company}</strong> at{" "}
-            {panel.mostAgreed.pct}% agreement on{" "}
-            {panel.mostAgreed.vote === "greenwash" ? "Greenwash" : "Real progress"}
-            . Most-contested: <strong>{panel.mostSplit.company}</strong>{" "}
-            ({panel.mostSplit.greenwashPct}% / {panel.mostSplit.realPct}%).
-          </p>
-        );
-      case "resilience":
-        return (
-          <p className="text-sm" style={{ color: "#5A5650" }}>
-            <strong>{panel.sustained}</strong> of <strong>{panel.total}</strong>{" "}
-            participants said they have already sustained a major behavior
-            change for 6+ months. That&rsquo;s{" "}
-            <strong style={{ color: accent }}>{panel.pct}%</strong>.
-          </p>
-        );
-    }
-  }
+          </motion.div>
 
-  const headlineByType: Record<Panel["type"], string> = {
-    gap: "The Gap — full breakdown",
-    funnel: "The Funnel — per-participant",
-    court: "The Court — verdict matrix",
-    dragons: "Reflection — every dragon",
-    outlier: "The Outlier",
-    alignment: "Where we agreed and split",
-    resilience: "Resilience",
-  };
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-20%" }}
+            transition={{ duration: 0.6, delay: 0.15 }}
+            className="rounded-md border p-5"
+            style={{ borderColor: HAIR, backgroundColor: "#FAF6EC" }}
+          >
+            <div
+              className="text-[10px] font-bold uppercase tracking-[0.3em]"
+              style={{ color: ASH }}
+            >
+              · most split ·
+            </div>
+            <div
+              className="mt-2 text-2xl font-bold"
+              style={{ fontFamily: SERIF, color: INK }}
+            >
+              {alignment.mostSplit.company}
+            </div>
+            <p className="mt-2 text-sm" style={{ color: ASH }}>
+              <strong style={{ color: CLAY }}>
+                {alignment.mostSplit.greenwashPct}%
+              </strong>{" "}
+              greenwash ·{" "}
+              <strong style={{ color: TEAL }}>
+                {alignment.mostSplit.realPct}%
+              </strong>{" "}
+              real
+            </p>
+          </motion.div>
+        </div>
+      )}
+    </SpreadFrame>
+  );
+}
 
-  const followups: Record<Panel["type"], string[]> = {
-    gap: [
-      "What did the people who underestimated have in common?",
-      "Did anyone overestimate? What might they have known that the rest didn't?",
-      "If we corrected for the gap, what's the right policy ask we'd land on?",
-    ],
-    funnel: [
-      "Which stage's drop-off surprised you?",
-      "Were the sustainers different in any visible way at the start?",
-      "What would unlock the stage you personally fell off at?",
-    ],
-    court: [
-      "Which company did this cohort give the most benefit of the doubt to? Why?",
-      "If the verdict changes when the data appears, is the verdict honest?",
-      "Where are we mistaking polish for proof?",
-    ],
-    dragons: [
-      "Whose dragon names yours?",
-      "What did you almost write but didn't?",
-      "Which one would a year-from-now you regret leaving on the page?",
-    ],
-    outlier: [
-      "What did this person see?",
-      "What might they be missing that the cohort caught?",
-      "Is this person a leading or trailing indicator?",
-    ],
-    alignment: [
-      "Why did this cohort agree most about that one?",
-      "What does the split say about how we read the others?",
-    ],
-    resilience: [
-      "What did the sustainers have access to?",
-      "Do the rest of us know who to ask?",
-    ],
-  };
-
+function CompanyVerdictCard({
+  row,
+  delay,
+  accent,
+}: {
+  row: Extract<Panel, { type: "court" }>["perCompany"][number];
+  delay: number;
+  accent: string;
+}) {
+  const verdictColor =
+    row.verdict === "Greenwash"
+      ? CLAY
+      : row.verdict === "Real progress"
+        ? TEAL
+        : row.verdict === "Split"
+          ? ASH
+          : ASH;
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center p-6"
-      style={{ backgroundColor: "rgba(10,9,8,0.7)" }}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      onClick={onClose}
+      initial={{ opacity: 0, rotateX: -25, y: 22 }}
+      whileInView={{ opacity: 1, rotateX: 0, y: 0 }}
+      viewport={{ once: true, margin: "-20%" }}
+      transition={{ delay, duration: 0.6, ease: "easeOut" }}
+      style={{ transformPerspective: 800 }}
+      className="rounded-md border p-4 text-center"
     >
-      <motion.div
-        className="relative max-h-[85vh] w-full max-w-3xl overflow-y-auto rounded-lg p-8"
-        style={{ backgroundColor: CARD_BG, color: CARD_INK }}
-        initial={{ y: 30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 20, opacity: 0 }}
-        transition={{ duration: 0.25 }}
-        onClick={(e) => e.stopPropagation()}
+      <div
+        className="text-xs font-bold uppercase tracking-widest"
+        style={{ color: accent }}
       >
-        <button
-          onClick={onClose}
-          aria-label="Close"
-          className="absolute right-4 top-4 text-2xl leading-none"
-          style={{ color: "#5A5650" }}
-        >
-          ×
-        </button>
-        <div
-          className="text-xs font-bold uppercase tracking-[0.3em]"
-          style={{ color: accent }}
-        >
-          Drill-down
-        </div>
-        <h2
-          className="mt-2 font-serif text-3xl"
-          style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
-        >
-          {headlineByType[panel.type]}
-        </h2>
-
-        <div className="mt-6">{detailFor(panel)}</div>
-
-        <div className="mt-8 border-t pt-6" style={{ borderColor: CARD_HAIR }}>
-          <div
-            className="text-xs font-bold uppercase tracking-[0.3em]"
-            style={{ color: accent }}
-          >
-            Discussion prompts
+        {row.company}
+      </div>
+      <div className="mt-3 h-2 w-full overflow-hidden rounded-full" style={{ backgroundColor: "rgba(26,26,26,0.08)" }}>
+        {row.totalVotes > 0 && (
+          <div className="flex h-full">
+            <div style={{ width: `${row.greenwashPct}%`, backgroundColor: CLAY }} />
+            <div style={{ width: `${row.realPct}%`, backgroundColor: TEAL }} />
           </div>
-          <ul className="mt-3 flex flex-col gap-2 text-sm" style={{ color: CARD_INK }}>
-            {followups[panel.type].map((q, i) => (
-              <li key={i}>· {q}</li>
-            ))}
-          </ul>
-        </div>
-
-        <p className="mt-6 text-xs" style={{ color: "#5A5650" }}>
-          Press <kbd className="rounded border px-1">Esc</kbd> or click outside to close.
-        </p>
-      </motion.div>
+        )}
+      </div>
+      <div
+        className="mt-3 text-sm font-bold uppercase tracking-wider"
+        style={{ color: verdictColor }}
+      >
+        {row.verdict}
+      </div>
+      <div className="mt-1 text-[10px]" style={{ color: ASH }}>
+        {row.totalVotes} {row.totalVotes === 1 ? "vote" : "votes"}
+      </div>
     </motion.div>
   );
 }
 
-function Stat({
-  label,
-  value,
-  dim,
-  bold,
-  accent,
+function cohortName(theme: CohortTheme) {
+  return theme.name;
+}
+
+/* ---- Dragons ----------------------------------------------------- */
+
+function tiltFor(seed: string, range: number) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) & 0xffff;
+  return (h % (range * 2 + 1)) - range;
+}
+
+function DragonsSpread({
+  panel,
+  theme,
 }: {
-  label: string;
-  value: string;
-  dim?: boolean;
-  bold?: boolean;
-  accent?: string;
+  panel: Extract<Panel, { type: "dragons" }>;
+  theme: CohortTheme;
 }) {
   return (
-    <div className="text-center">
-      <div className="text-xs uppercase tracking-widest" style={{ color: "#5A5650" }}>
-        {label}
-      </div>
-      <div
-        className="mt-1 tabular-nums"
-        style={{
-          fontSize: bold ? "3.5rem" : "2.5rem",
-          fontWeight: bold ? 700 : 500,
-          color: accent ?? (dim ? "#8B8680" : CARD_INK),
-        }}
+    <SpreadFrame>
+      <SpreadCorner spread="dragons" rotate={6} />
+      <Eyebrow accent={theme.primary}>04 · Reflection</Eyebrow>
+      <motion.h2
+        initial={{ opacity: 0, y: 18 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-20%" }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
+        className="mt-3 max-w-4xl text-4xl font-bold leading-[1.1] md:text-6xl"
+        style={{ fontFamily: SERIF, color: INK }}
       >
-        {value}
+        The dragons we&rsquo;re taking home.
+      </motion.h2>
+
+      {panel.themes.length > 0 && (
+        <div className="mt-8 flex flex-wrap gap-2">
+          {panel.themes.map((t, i) => (
+            <motion.span
+              key={t.word}
+              initial={{ opacity: 0, scale: 0.8 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true, margin: "-20%" }}
+              transition={{ delay: i * 0.05, duration: 0.4 }}
+              className="rounded-full px-4 py-1.5 text-sm font-semibold uppercase tracking-wider"
+              style={{
+                backgroundColor: `${theme.primary}1F`,
+                color: theme.primary,
+                fontSize: `${0.85 + Math.min(t.count, 6) * 0.07}rem`,
+              }}
+            >
+              {t.word}
+            </motion.span>
+          ))}
+        </div>
+      )}
+
+      <div className="relative mt-12 flex flex-wrap justify-center gap-4 md:gap-5">
+        {panel.quotes.map((q, i) => {
+          const tilt = tiltFor(`${q.name}-${i}`, 4);
+          return (
+            <motion.div
+              key={`${q.name}-${i}`}
+              initial={{ opacity: 0, y: 50, rotate: tilt - 6 }}
+              whileInView={{ opacity: 1, y: 0, rotate: tilt }}
+              viewport={{ once: true, margin: "-15%" }}
+              transition={{
+                delay: i * 0.12,
+                type: "spring",
+                stiffness: 90,
+                damping: 14,
+              }}
+              className="flex w-72 flex-col rounded-sm p-4 md:w-80"
+              style={{
+                backgroundColor: "#FFFCF2",
+                color: INK,
+                boxShadow:
+                  "0 10px 24px rgba(0,0,0,0.15), 0 3px 6px rgba(0,0,0,0.10)",
+              }}
+            >
+              <p
+                className="font-serif text-base italic leading-snug"
+                style={{ fontFamily: SERIF }}
+              >
+                &ldquo;{q.text}&rdquo;
+              </p>
+              <div className="mt-3 flex items-center justify-end gap-2 text-xs" style={{ color: ASH }}>
+                <Avatar name={q.name} size={20} />
+                <span>— {q.name}</span>
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
-    </div>
+
+      {panel.quotes.length === 0 && (
+        <p className="mt-12 text-center text-base italic" style={{ color: ASH }}>
+          No reflections were shared this round.
+        </p>
+      )}
+    </SpreadFrame>
+  );
+}
+
+/* ---- Credits ----------------------------------------------------- */
+
+function CreditsSpread({
+  cohort,
+  theme,
+  builtBy,
+}: {
+  cohort: string;
+  theme: CohortTheme;
+  builtBy: string[];
+}) {
+  return (
+    <SpreadFrame className="items-center text-center">
+      <SpreadCorner spread="credits" rotate={0} />
+      <Eyebrow accent={theme.primary}>Built by</Eyebrow>
+
+      <div className="mt-8 flex max-w-3xl flex-wrap justify-center gap-x-3 gap-y-2">
+        {builtBy.length === 0 ? (
+          <span className="text-base italic" style={{ color: ASH }}>
+            no participants
+          </span>
+        ) : (
+          builtBy.map((name, i) => (
+            <motion.span
+              key={`${name}-${i}`}
+              initial={{ opacity: 0, y: 8 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-20%" }}
+              transition={{ delay: i * 0.04, duration: 0.4 }}
+              className="text-xl font-semibold md:text-2xl"
+              style={{ color: theme.primary, fontFamily: SERIF }}
+            >
+              {name}
+              {i < builtBy.length - 1 && (
+                <span style={{ color: ASH }} className="ml-3">
+                  ·
+                </span>
+              )}
+            </motion.span>
+          ))
+        )}
+      </div>
+
+      <div className="mt-14">
+        <Mascot cohort={cohort} size={56} />
+      </div>
+
+      <p className="mt-10 text-base italic" style={{ color: ASH, fontFamily: SERIF }}>
+        Pluralistic ignorance — Andre et al., <em>Nature Climate Change</em>, 2024
+      </p>
+
+      <p
+        className="mt-6 text-xs uppercase tracking-[0.4em]"
+        style={{ color: ASH }}
+      >
+        📸 Screenshot this · The Action Gap · HHL Leipzig MBA
+      </p>
+    </SpreadFrame>
+  );
+}
+
+/* ---- Empty ------------------------------------------------------- */
+
+function EmptyState({ cohort, theme }: { cohort: string; theme: CohortTheme }) {
+  return (
+    <main
+      className="flex min-h-screen flex-col items-center justify-center px-8 text-center"
+      style={{ backgroundColor: PAPER, color: INK }}
+    >
+      <div className="select-none text-[7rem] leading-none">{theme.emoji}</div>
+      <h1
+        className="mt-6 text-3xl font-bold"
+        style={{ fontFamily: SERIF, color: INK }}
+      >
+        {cohort}
+      </h1>
+      <p className="mt-3 text-base italic" style={{ color: ASH, fontFamily: SERIF }}>
+        Insights will appear when the session has data.
+      </p>
+    </main>
   );
 }
