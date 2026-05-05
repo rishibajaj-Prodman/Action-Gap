@@ -9,6 +9,7 @@ import MirrorPhone from "@/components/phones/MirrorPhone";
 import FunnelPhone from "@/components/phones/FunnelPhone";
 import CourtPhone from "@/components/phones/CourtPhone";
 import ReflectionPhone from "@/components/phones/ReflectionPhone";
+import JourneyPhone from "@/components/journeys/JourneyPhone";
 import { Mascot } from "@/components/mascots/Mascot";
 import { CohortPattern } from "@/components/patterns/CohortPattern";
 import { Avatar } from "@/components/Avatar";
@@ -63,17 +64,35 @@ export default function PhoneCohortPage() {
         return;
       }
 
-      const { data } = await supabase
-        .from("participants")
-        .select("active")
-        .eq("cohort", cohort)
-        .eq("participant_id", pid)
-        .maybeSingle();
+      const [partRes, sessRes] = await Promise.all([
+        supabase
+          .from("participants")
+          .select("active")
+          .eq("cohort", cohort)
+          .eq("participant_id", pid)
+          .maybeSingle(),
+        supabase
+          .from("sessions")
+          .select("ended_at, current_round")
+          .eq("cohort", cohort)
+          .maybeSingle(),
+      ]);
 
       if (cancelled) return;
 
-      if (!data || data.active === false) {
-        console.log("Stale participant detected, clearing localStorage");
+      const sessionEnded =
+        !!sessRes.data?.ended_at || sessRes.data?.current_round === "complete";
+
+      if (!partRes.data) {
+        // Participant row was deleted (Clear Roster). Bounce to join.
+        localStorage.removeItem(`pid_${cohort}`);
+        localStorage.removeItem(`name_${cohort}`);
+        setMode("join");
+        return;
+      }
+
+      if (partRes.data.active === false && !sessionEnded) {
+        // Deactivated mid-session — instructor toggled them off. Bounce.
         localStorage.removeItem(`pid_${cohort}`);
         localStorage.removeItem(`name_${cohort}`);
         setMode("join");
@@ -284,7 +303,11 @@ export default function PhoneCohortPage() {
         </div>
       )}
 
-      <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col">
+      <div
+        className={`relative z-10 mx-auto flex w-full flex-1 flex-col ${
+          currentRound === "complete" ? "max-w-2xl" : "max-w-md"
+        }`}
+      >
         {mode === "loading" && null}
 
         {mode === "join" && (
@@ -384,20 +407,7 @@ export default function PhoneCohortPage() {
             ) : currentRound === "reflection" ? (
               <ReflectionPhone cohort={cohort} />
             ) : currentRound === "complete" ? (
-              <div className="flex flex-1 flex-col items-center justify-center text-center">
-                <h1
-                  className="text-5xl font-semibold leading-tight"
-                  style={{ color: cohortColor }}
-                >
-                  Thanks, {storedName}.
-                </h1>
-                <p
-                  className="mt-4 text-3xl font-medium"
-                  style={{ color: cohortColor }}
-                >
-                  The poster is yours.
-                </p>
-              </div>
+              <JourneyPhone cohort={cohort} />
             ) : null}
           </>
         )}

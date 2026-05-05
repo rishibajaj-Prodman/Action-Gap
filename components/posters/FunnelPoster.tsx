@@ -51,6 +51,12 @@ type ParticipantRow = {
   active: boolean;
 };
 
+type SessionRow = {
+  cohort: string;
+  current_round: string | null;
+  reveal_state: string | null;
+};
+
 export default function FunnelPoster({
   cohort,
   embedded = false,
@@ -66,11 +72,19 @@ export default function FunnelPoster({
   const cohortColor = theme.primary;
   const singular = COHORT_SINGULAR[cohort] ?? cohort;
 
+  const [session, setSession] = useState<SessionRow | null>(null);
   const [responses, setResponses] = useState<ResponseRow[]>([]);
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
 
   const fetchData = useCallback(async () => {
     if (!cohort) return;
+
+    const { data: sess } = await supabase
+      .from("sessions")
+      .select("cohort, current_round, reveal_state")
+      .eq("cohort", cohort)
+      .single();
+    if (sess) setSession(sess);
 
     const { data: rows } = await supabase
       .from("responses")
@@ -132,6 +146,18 @@ export default function FunnelPoster({
       .on(
         "postgres_changes",
         {
+          event: "UPDATE",
+          schema: "public",
+          table: "sessions",
+          filter: `cohort=eq.${cohort}`,
+        },
+        (payload) => {
+          setSession(payload.new as SessionRow);
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
           event: "INSERT",
           schema: "public",
           table: "participants",
@@ -171,8 +197,8 @@ export default function FunnelPoster({
 
   const [showSignature, setShowSignature] = useState(false);
   const [showInsight, setShowInsight] = useState(false);
-  const prevPunchlineRef = useRef(false);
-  const prevInsightPunchlineRef = useRef(false);
+  const prevRevealStateRef = useRef<string | null | undefined>(undefined);
+  const prevInsightRevealRef = useRef<string | null | undefined>(undefined);
 
   const stats = useMemo(() => {
     const N = responses.length;
@@ -216,27 +242,30 @@ export default function FunnelPoster({
     [participants]
   );
 
-  const punchlineActive = allIn && stats.stageCounts[0] > 0;
+  const revealState = session?.reveal_state ?? "collecting";
+  const isRevealing = revealState === "reveal";
 
   useEffect(() => {
-    const prev = prevPunchlineRef.current;
-    prevPunchlineRef.current = punchlineActive;
+    const prev = prevRevealStateRef.current;
+    const current = session?.reveal_state;
+    prevRevealStateRef.current = current;
 
-    if (punchlineActive && !prev) {
+    if (current === "reveal" && prev && prev !== "reveal") {
       const t = setTimeout(() => setShowSignature(true), 1000);
       return () => clearTimeout(t);
     }
 
-    if (!punchlineActive && showSignature) {
+    if (current !== "reveal" && showSignature) {
       setShowSignature(false);
     }
-  }, [punchlineActive, showSignature]);
+  }, [session?.reveal_state, showSignature]);
 
   useEffect(() => {
-    const prev = prevInsightPunchlineRef.current;
-    prevInsightPunchlineRef.current = punchlineActive;
+    const prev = prevInsightRevealRef.current;
+    const current = session?.reveal_state;
+    prevInsightRevealRef.current = current;
 
-    if (punchlineActive && !prev && !locked) {
+    if (current === "reveal" && prev && prev !== "reveal" && !locked) {
       const onTimer = setTimeout(() => setShowInsight(true), 2000);
       const offTimer = setTimeout(() => setShowInsight(false), 10000);
       return () => {
@@ -245,10 +274,10 @@ export default function FunnelPoster({
       };
     }
 
-    if (!punchlineActive && showInsight) {
+    if (current !== "reveal" && showInsight) {
       setShowInsight(false);
     }
-  }, [punchlineActive, showInsight, locked]);
+  }, [session?.reveal_state, showInsight, locked]);
 
   const inner = (
     <div className="flex min-h-0 flex-1 flex-col items-center overflow-hidden px-12 py-6">
@@ -257,78 +286,141 @@ export default function FunnelPoster({
         How many of us make it from concern to action?
       </p>
 
-      <div className="mt-6 flex w-full max-w-5xl flex-col gap-3">
-        {STAGE_LABELS.map((label, i) => {
-          const width = stats.barWidthPct[i];
-          const count = stats.stageCounts[i];
-          const pct = stats.stagePct[i];
-          return (
+      <AnimatePresence mode="wait">
+        {!isRevealing ? (
+          <motion.div
+            key="collecting"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="mt-16 flex flex-col items-center text-center"
+          >
             <div
-              key={label}
-              className="relative h-14 w-full overflow-hidden rounded-md"
-              style={{ backgroundColor: BAR_BG }}
+              className="text-8xl font-bold tabular-nums transition-colors"
+              style={{ color: allIn ? TEAL : BONE }}
             >
-              <div
-                className="h-full transition-all duration-700 ease-out"
-                style={{
-                  width: `${width}%`,
-                  backgroundColor: cohortColor,
-                }}
-              />
-              <div className="absolute inset-0 flex items-center justify-between px-6">
-                <span
-                  className="text-lg font-semibold"
-                  style={{ color: BONE }}
-                >
-                  {label}
-                </span>
-                <span
-                  className="text-lg font-semibold tabular-nums"
-                  style={{ color: BONE }}
-                >
-                  {count} · {pct}%
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="mt-6 flex-shrink-0 text-center">
-        <div
-          className="text-2xl font-semibold tabular-nums transition-colors"
-          style={{ color: allIn ? TEAL : BONE }}
-        >
-          {cappedX} of {Y} submitted
-        </div>
-        {!allIn && waitingForNames.length > 0 && Y > 0 && (
-          <div className="mt-2 text-sm" style={{ color: ASH }}>
-            Waiting for: {waitingForNames.join(", ")}
-          </div>
-        )}
-        <AnimatePresence>
-          {allIn && stats.stageCounts[0] > 0 && (
-            <motion.p
-              key="punchline"
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.5, delay: 0.5 }}
-              className="mt-6 text-2xl font-medium"
-              style={{ color: BONE }}
-            >
-              Drop-off:{" "}
+              {cappedX}
               <span
-                className="font-bold tabular-nums"
-                style={{ color: cohortColor }}
+                className="text-5xl font-medium"
+                style={{ color: allIn ? TEAL : "#3A3835" }}
               >
-                {Math.max(0, stats.stagePct[0] - stats.stagePct[3])}%
-              </span>{" "}
-              from concern to sustained action
-            </motion.p>
-          )}
-        </AnimatePresence>
-      </div>
+                {" / "}
+                {Y}
+              </span>
+            </div>
+            <p
+              className="mt-4 text-xl uppercase tracking-widest"
+              style={{ color: allIn ? TEAL : ASH }}
+            >
+              submitted
+            </p>
+            <div className="mt-6 h-6 text-sm" style={{ color: ASH }}>
+              {!allIn && waitingForNames.length > 0 && (
+                <span>Waiting for: {waitingForNames.join(", ")}</span>
+              )}
+              {allIn && (
+                <span style={{ color: TEAL }}>
+                  Everyone&rsquo;s in. Reveal from control.
+                </span>
+              )}
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="reveal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mt-6 flex w-full flex-col items-center"
+          >
+            <div className="flex w-full max-w-5xl flex-col gap-4">
+              {STAGE_LABELS.map((label, i) => {
+                const width = stats.barWidthPct[i];
+                const count = stats.stageCounts[i];
+                const pct = stats.stagePct[i];
+                const barDelay = i * 0.32;
+                return (
+                  <motion.div
+                    key={label}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: barDelay, duration: 0.4 }}
+                    className="relative h-20 w-full overflow-hidden rounded-md"
+                    style={{
+                      backgroundColor: BAR_BG,
+                      boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
+                    }}
+                  >
+                    <motion.div
+                      className="h-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${width}%` }}
+                      transition={{
+                        delay: barDelay + 0.15,
+                        duration: 1.0,
+                        ease: [0.16, 1, 0.3, 1],
+                      }}
+                      style={{ backgroundColor: cohortColor }}
+                    />
+                    <div className="absolute inset-0 flex items-center justify-between px-7">
+                      <span
+                        className="text-xl font-semibold"
+                        style={{ color: BONE }}
+                      >
+                        {label}
+                      </span>
+                      <motion.span
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: barDelay + 1.0, duration: 0.3 }}
+                        className="tabular-nums"
+                        style={{
+                          color: BONE,
+                          fontFamily: 'Georgia, "Times New Roman", serif',
+                          fontSize: "1.75rem",
+                          fontWeight: 700,
+                        }}
+                      >
+                        {count} · {pct}%
+                      </motion.span>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {stats.stageCounts[0] > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  duration: 0.7,
+                  delay: 0.32 * STAGE_LABELS.length + 0.6,
+                  ease: "easeOut",
+                }}
+                className="mt-10 flex flex-col items-center text-center"
+              >
+                <span
+                  className="leading-none tabular-nums"
+                  style={{
+                    color: cohortColor,
+                    fontFamily: 'Georgia, "Times New Roman", serif',
+                    fontSize: "clamp(5rem, 10vw, 9rem)",
+                    fontWeight: 700,
+                  }}
+                >
+                  {Math.max(0, stats.stagePct[0] - stats.stagePct[3])}%
+                </span>
+                <span
+                  className="mt-3 text-lg uppercase tracking-[0.3em]"
+                  style={{ color: ASH }}
+                >
+                  drop-off · concern → sustained
+                </span>
+              </motion.div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 

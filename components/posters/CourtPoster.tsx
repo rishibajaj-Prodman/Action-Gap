@@ -360,24 +360,35 @@ export default function CourtPoster({
                     : s.verdict === "Real progress"
                       ? TEAL
                       : ASH;
+                const stampDelay = i * 0.32;
                 return (
                   <motion.div
                     key={s.pair.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.15, duration: 0.5, ease: "easeOut" }}
+                    initial={{ opacity: 0, scale: 0.65, y: 8 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{
+                      delay: stampDelay,
+                      duration: 0.55,
+                      ease: [0.34, 1.56, 0.64, 1],
+                    }}
                     className="flex items-center gap-6"
                   >
                     <div
-                      className="w-40 text-right text-base font-bold uppercase tracking-wider"
-                      style={{ color: BONE }}
+                      className="w-44 text-right text-xl font-bold uppercase tracking-wider"
+                      style={{
+                        color: BONE,
+                        fontFamily: 'Georgia, "Times New Roman", serif',
+                      }}
                     >
                       {s.pair.company}
                     </div>
 
                     <div
-                      className="relative h-14 flex-1 overflow-hidden rounded-md"
-                      style={{ backgroundColor: CARD_BG }}
+                      className="relative h-16 flex-1 overflow-hidden rounded-md"
+                      style={{
+                        backgroundColor: CARD_BG,
+                        boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
+                      }}
                     >
                       {s.totalVotes === 0 ? (
                         <div className="absolute inset-0 flex items-center justify-center text-sm" style={{ color: ASH }}>
@@ -388,18 +399,26 @@ export default function CourtPoster({
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${s.greenwashPct}%` }}
-                            transition={{ delay: i * 0.15 + 0.2, duration: 0.7, ease: "easeOut" }}
+                            transition={{
+                              delay: stampDelay + 0.25,
+                              duration: 0.85,
+                              ease: [0.16, 1, 0.3, 1],
+                            }}
                             style={{ backgroundColor: CLAY }}
-                            className="flex items-center justify-start pl-3 text-sm font-bold tabular-nums text-black"
+                            className="flex items-center justify-start pl-4 text-base font-bold tabular-nums text-black"
                           >
                             {s.greenwashPct >= 12 ? `${s.greenwashCount}` : ""}
                           </motion.div>
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${s.realPct}%` }}
-                            transition={{ delay: i * 0.15 + 0.2, duration: 0.7, ease: "easeOut" }}
+                            transition={{
+                              delay: stampDelay + 0.25,
+                              duration: 0.85,
+                              ease: [0.16, 1, 0.3, 1],
+                            }}
                             style={{ backgroundColor: TEAL }}
-                            className="flex items-center justify-end pr-3 text-sm font-bold tabular-nums text-black"
+                            className="flex items-center justify-end pr-4 text-base font-bold tabular-nums text-black"
                           >
                             {s.realPct >= 12 ? `${s.realCount}` : ""}
                           </motion.div>
@@ -407,11 +426,41 @@ export default function CourtPoster({
                       )}
                     </div>
 
-                    <div
-                      className="w-40 text-left text-base font-bold uppercase tracking-wider"
-                      style={{ color: verdictColor }}
-                    >
-                      {s.verdict}
+                    <div className="flex w-44 items-center gap-2">
+                      <motion.span
+                        aria-hidden
+                        className="select-none text-2xl"
+                        initial={{ opacity: 0, rotate: -45, x: -8 }}
+                        animate={{
+                          opacity: [0, 1, 1, 0.6],
+                          rotate: [-45, 8, -8, 0],
+                          x: [-8, 2, -2, 0],
+                        }}
+                        transition={{
+                          delay: stampDelay + 0.95,
+                          duration: 0.55,
+                          times: [0, 0.4, 0.7, 1],
+                          ease: "easeOut",
+                        }}
+                      >
+                        🔨
+                      </motion.span>
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.5 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{
+                          delay: stampDelay + 1.05,
+                          duration: 0.4,
+                          ease: [0.34, 1.56, 0.64, 1],
+                        }}
+                        className="text-left text-xl font-bold uppercase tracking-wider"
+                        style={{
+                          color: verdictColor,
+                          fontFamily: 'Georgia, "Times New Roman", serif',
+                        }}
+                      >
+                        {s.verdict}
+                      </motion.div>
                     </div>
                   </motion.div>
                 );

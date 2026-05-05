@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
+import { motion } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "@/lib/supabase";
 import { useVisibilityRefetch } from "@/lib/useVisibilityRefetch";
@@ -350,27 +351,46 @@ function FinalPoster({
   cohortColor: string;
   allParticipants: ParticipantRow[];
 }) {
-  const builtBy = allParticipants.map((p) => p.name).join(", ");
+  const names = allParticipants.map((p) => p.name);
 
   return (
     <>
-      <header className="flex flex-shrink-0 items-center justify-between gap-6 px-12 pt-6 pb-3">
-        <div className="flex items-center gap-4">
-          <Mascot cohort={cohort} size={48} />
-          <h1
-            className="text-5xl font-bold uppercase tracking-wider"
-            style={{ color: cohortColor }}
-          >
-            {cohort}
-          </h1>
+      <motion.header
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+        className="flex flex-shrink-0 items-end justify-between gap-6 px-12 pt-8 pb-4"
+      >
+        <div className="flex items-center gap-5">
+          <Mascot cohort={cohort} size={64} />
+          <div>
+            <div
+              className="text-[10px] font-bold uppercase tracking-[0.4em]"
+              style={{ color: ASH }}
+            >
+              Session complete
+            </div>
+            <h1
+              className="text-7xl font-bold leading-none tracking-tight"
+              style={{
+                color: cohortColor,
+                fontFamily: 'Georgia, "Times New Roman", serif',
+              }}
+            >
+              {cohort}
+            </h1>
+          </div>
         </div>
-        <span
-          className="text-xs font-bold uppercase tracking-widest"
+        <motion.span
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7, duration: 0.6 }}
+          className="text-xs italic"
           style={{ color: ASH }}
         >
-          Session complete
-        </span>
-      </header>
+          The Action Gap · HHL Leipzig MBA
+        </motion.span>
+      </motion.header>
 
       <section className="relative min-h-0 flex-1 overflow-hidden px-8 pb-2">
         <TrailCanvas
@@ -380,8 +400,19 @@ function FinalPoster({
           renderCheckpoint={(cp) => {
             const W = 320;
             const H = 280;
+            const cpDelay =
+              { mirror: 0.6, funnel: 1.0, court: 1.4, reflection: 1.8 }[
+                cp.id as "mirror" | "funnel" | "court" | "reflection"
+              ] ?? 0.6;
             return (
-              <div
+              <motion.div
+                initial={{ opacity: 0, y: 24, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{
+                  delay: cpDelay,
+                  duration: 0.7,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
                 className="mt-3 overflow-hidden rounded-md border"
                 style={{
                   width: W,
@@ -389,6 +420,7 @@ function FinalPoster({
                   borderColor: "rgba(255,255,255,0.08)",
                   backgroundColor: "rgba(21,17,15,0.85)",
                   padding: "12px 14px",
+                  boxShadow: "0 12px 28px rgba(0,0,0,0.45)",
                 }}
               >
                 {cp.id === "mirror" && (
@@ -403,40 +435,58 @@ function FinalPoster({
                 {cp.id === "reflection" && (
                   <ReflectionPoster cohort={cohort} locked />
                 )}
-              </div>
+              </motion.div>
             );
           }}
         />
       </section>
 
-      <div className="flex flex-shrink-0 justify-center px-12 py-3">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 2.4, duration: 0.6 }}
+        className="flex flex-shrink-0 justify-center px-12 py-3"
+      >
         <a
           href={`/insights/${cohort}`}
           target="_blank"
           rel="noreferrer"
-          className="rounded-full border-2 px-6 py-2 text-sm font-semibold transition-colors hover:bg-white/5"
+          className="rounded-full border-2 px-7 py-2.5 text-base font-semibold transition-colors hover:bg-white/5"
           style={{ borderColor: cohortColor, color: cohortColor }}
         >
           → View cohort insights
         </a>
-      </div>
+      </motion.div>
 
       <footer
-        className="flex flex-shrink-0 items-baseline justify-between gap-6 border-t px-12 py-3 text-xs"
+        className="flex flex-shrink-0 flex-col gap-2 border-t px-12 py-4 text-xs"
         style={{ borderColor: "rgba(255,255,255,0.1)" }}
       >
-        <div className="flex-1">
-          <span style={{ color: ASH }}>Built by: </span>
-          {allParticipants.length > 0 ? (
-            <span style={{ color: cohortColor }}>{builtBy}</span>
-          ) : (
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <span style={{ color: ASH }}>Built by:</span>
+          {names.length === 0 ? (
             <span className="italic" style={{ color: ASH }}>
               no participants
             </span>
+          ) : (
+            names.map((n, i) => (
+              <motion.span
+                key={`${n}-${i}`}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 2.7 + i * 0.04, duration: 0.3 }}
+                style={{ color: cohortColor }}
+              >
+                {n}
+                {i < names.length - 1 && (
+                  <span style={{ color: ASH }} className="mx-1">·</span>
+                )}
+              </motion.span>
+            ))
           )}
         </div>
-        <div style={{ color: ASH }}>
-          📸 Screenshot this · The Action Gap · HHL Leipzig MBA
+        <div className="flex justify-end" style={{ color: ASH }}>
+          📸 Screenshot this
         </div>
       </footer>
     </>

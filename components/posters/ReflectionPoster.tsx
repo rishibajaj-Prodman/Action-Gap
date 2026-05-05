@@ -35,6 +35,12 @@ type ParticipantRow = {
   active: boolean;
 };
 
+type SessionRow = {
+  cohort: string;
+  current_round: string | null;
+  reveal_state: string | null;
+};
+
 function tiltFor(id: string): number {
   let hash = 0;
   for (let i = 0; i < id.length; i++) {
@@ -58,13 +64,21 @@ export default function ReflectionPoster({
   const cohortColor = theme.primary;
   const singular = COHORT_SINGULAR[cohort] ?? cohort;
 
+  const [session, setSession] = useState<SessionRow | null>(null);
   const [responses, setResponses] = useState<ResponseRow[]>([]);
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
   const [showInsight, setShowInsight] = useState(false);
-  const prevHadResponseRef = useRef(false);
+  const prevRevealStateRef = useRef<string | null | undefined>(undefined);
 
   const fetchData = useCallback(async () => {
     if (!cohort) return;
+
+    const { data: sess } = await supabase
+      .from("sessions")
+      .select("cohort, current_round, reveal_state")
+      .eq("cohort", cohort)
+      .single();
+    if (sess) setSession(sess);
 
     const { data: rows } = await supabase
       .from("responses")
@@ -131,6 +145,18 @@ export default function ReflectionPoster({
       .on(
         "postgres_changes",
         {
+          event: "UPDATE",
+          schema: "public",
+          table: "sessions",
+          filter: `cohort=eq.${cohort}`,
+        },
+        (payload) => {
+          setSession(payload.new as SessionRow);
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
           event: "INSERT",
           schema: "public",
           table: "participants",
@@ -169,11 +195,11 @@ export default function ReflectionPoster({
   useVisibilityRefetch(fetchData);
 
   useEffect(() => {
-    const prev = prevHadResponseRef.current;
-    const hasResponse = responses.length > 0;
-    prevHadResponseRef.current = hasResponse;
+    const prev = prevRevealStateRef.current;
+    const current = session?.reveal_state;
+    prevRevealStateRef.current = current;
 
-    if (hasResponse && !prev && !locked) {
+    if (current === "reveal" && prev && prev !== "reveal" && !locked) {
       const onTimer = setTimeout(() => setShowInsight(true), 2000);
       const offTimer = setTimeout(() => setShowInsight(false), 10000);
       return () => {
@@ -182,10 +208,10 @@ export default function ReflectionPoster({
       };
     }
 
-    if (!hasResponse && showInsight) {
+    if (current !== "reveal" && showInsight) {
       setShowInsight(false);
     }
-  }, [responses.length, showInsight, locked]);
+  }, [session?.reveal_state, showInsight, locked]);
 
   const nameByPid = useMemo(() => {
     const map = new Map<string, string>();
@@ -204,10 +230,20 @@ export default function ReflectionPoster({
   );
   const cappedX = Math.min(X, Y);
   const allIn = Y > 0 && cappedX >= Y;
+  const waitingForNames = useMemo(
+    () =>
+      participants
+        .filter((p) => !submittedSet.has(p.participant_id))
+        .map((p) => p.name),
+    [participants, submittedSet]
+  );
   const namesList = useMemo(
     () => participants.map((p) => p.name).join(", "),
     [participants]
   );
+
+  const revealState = session?.reveal_state ?? "collecting";
+  const isRevealing = revealState === "reveal";
 
   const MAX_VISIBLE = 24;
   const visibleResponses = responses.slice(-MAX_VISIBLE);
@@ -219,72 +255,175 @@ export default function ReflectionPoster({
       <p className="mt-2 text-lg" style={{ color: ASH }}>
         The dragons we&rsquo;re taking home.
       </p>
-      {overflowCount > 0 && (
+      {isRevealing && overflowCount > 0 && (
         <p className="mt-1 text-xs italic" style={{ color: ASH }}>
           Recent reflections (+{overflowCount} more)
         </p>
       )}
 
-      <div className="mt-4 min-h-0 w-full max-w-7xl flex-1 overflow-hidden">
-        {responses.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center">
-            <p className="text-xl italic" style={{ color: ASH }}>
-              Waiting for the first reflection...
+      <AnimatePresence mode="wait">
+        {!isRevealing ? (
+          <motion.div
+            key="collecting"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="mt-8 flex flex-col items-center text-center"
+          >
+            <div
+              className="max-w-2xl text-2xl font-medium leading-snug"
+              style={{ color: BONE }}
+            >
+              We saw the gap. The drop-off. The greenwash.
+              <br />
+              So — what&rsquo;s{" "}
+              <span style={{ color: cohortColor, fontWeight: 700 }}>
+                ONE thing
+              </span>{" "}
+              you&rsquo;ll start in the next{" "}
+              <span style={{ color: cohortColor, fontWeight: 700 }}>
+                30 days
+              </span>
+              ?
+            </div>
+            <p
+              className="mt-3 text-sm italic"
+              style={{ color: ASH }}
+            >
+              Specific. Dated. Small enough that it&rsquo;ll actually happen.
             </p>
-          </div>
-        ) : (
-          <div className="flex h-full flex-wrap content-start justify-center gap-3 overflow-hidden">
-            <AnimatePresence>
-              {visibleResponses.map((r) => {
-                const tilt = tiltFor(r.id);
-                const name = nameByPid.get(r.participant_id) ?? "Anonymous";
-                return (
-                  <motion.div
-                    key={r.id}
-                    initial={{ opacity: 0, y: 60, rotate: tilt - 5 }}
-                    animate={{ opacity: 1, y: 0, rotate: tilt }}
-                    exit={{ opacity: 0, y: 30 }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 100,
-                      damping: 15,
-                    }}
-                    className="flex flex-col rounded-sm p-3"
-                    style={{
-                      backgroundColor: BONE,
-                      color: "#1A1A1A",
-                      width: "clamp(120px, 14vw, 200px)",
-                      minHeight: "clamp(80px, 10vh, 120px)",
-                      boxShadow:
-                        "0 6px 18px rgba(0,0,0,0.45), 0 2px 4px rgba(0,0,0,0.35)",
-                    }}
-                  >
-                    <p className="flex-1 text-sm font-medium leading-snug">
-                      {r.data?.text ?? ""}
-                    </p>
-                    <div
-                      className="mt-2 flex items-center justify-end gap-1.5 text-[10px]"
-                      style={{ color: "#5A5A5A" }}
-                    >
-                      <Avatar name={name} size={18} />
-                      <span>— {name}</span>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </div>
-        )}
-      </div>
 
-      <div className="mt-4 flex-shrink-0 text-center">
-        <div
-          className="text-xl font-semibold tabular-nums transition-colors"
-          style={{ color: allIn ? TEAL : BONE }}
-        >
-          {cappedX} of {Y} submitted
+            <div
+              className="mt-10 text-7xl font-bold tabular-nums transition-colors"
+              style={{ color: allIn ? TEAL : BONE }}
+            >
+              {cappedX}
+              <span
+                className="text-4xl font-medium"
+                style={{ color: allIn ? TEAL : "#3A3835" }}
+              >
+                {" / "}
+                {Y}
+              </span>
+            </div>
+            <p
+              className="mt-3 text-base uppercase tracking-widest"
+              style={{ color: allIn ? TEAL : ASH }}
+            >
+              dragons named
+            </p>
+            <div className="mt-4 h-6 text-sm" style={{ color: ASH }}>
+              {!allIn && waitingForNames.length > 0 && (
+                <span>Waiting for: {waitingForNames.join(", ")}</span>
+              )}
+              {allIn && (
+                <span style={{ color: TEAL }}>
+                  Everyone&rsquo;s in. Reveal from control.
+                </span>
+              )}
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="reveal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="relative mt-4 min-h-0 w-full max-w-7xl flex-1 overflow-hidden"
+          >
+            {responses.length > 0 && (
+              <motion.div
+                aria-hidden
+                className="pointer-events-none absolute z-20 select-none text-5xl"
+                initial={{ x: "-12vw", y: "20vh", rotate: -8, opacity: 0 }}
+                animate={{
+                  x: "110vw",
+                  y: ["20vh", "8vh", "28vh", "12vh"],
+                  rotate: [-8, 4, -6, 2],
+                  opacity: [0, 1, 1, 0.9, 0],
+                }}
+                transition={{
+                  duration: 7,
+                  delay: 0.8,
+                  times: [0, 0.15, 0.45, 0.75, 1],
+                  ease: "easeInOut",
+                }}
+              >
+                🐉
+              </motion.div>
+            )}
+            {responses.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center">
+                <p className="text-xl italic" style={{ color: ASH }}>
+                  No reflections were submitted.
+                </p>
+              </div>
+            ) : (
+              <div className="flex h-full flex-wrap content-start justify-center gap-4 overflow-hidden">
+                <AnimatePresence>
+                  {visibleResponses.map((r, i) => {
+                    const tilt = tiltFor(r.id);
+                    const name = nameByPid.get(r.participant_id) ?? "Anonymous";
+                    const dropDelay = Math.min(i * 0.09, 1.8);
+                    const isLong = (r.data?.text?.length ?? 0) > 90;
+                    return (
+                      <motion.div
+                        key={r.id}
+                        initial={{ opacity: 0, y: -120, rotate: tilt - 8, scale: 0.85 }}
+                        animate={{ opacity: 1, y: 0, rotate: tilt, scale: 1 }}
+                        exit={{ opacity: 0, y: 30 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 110,
+                          damping: 13,
+                          delay: dropDelay,
+                        }}
+                        className="flex flex-col rounded-sm p-4"
+                        style={{
+                          backgroundColor: BONE,
+                          color: "#1A1A1A",
+                          width: isLong ? "clamp(180px, 20vw, 260px)" : "clamp(140px, 15vw, 220px)",
+                          minHeight: isLong ? "clamp(120px, 13vh, 160px)" : "clamp(90px, 10vh, 130px)",
+                          boxShadow:
+                            "0 12px 28px rgba(0,0,0,0.50), 0 4px 8px rgba(0,0,0,0.40)",
+                        }}
+                      >
+                        <p
+                          className="flex-1 leading-snug"
+                          style={{
+                            fontFamily: 'Georgia, "Times New Roman", serif',
+                            fontStyle: "italic",
+                            fontSize: isLong ? "1rem" : "0.9rem",
+                          }}
+                        >
+                          &ldquo;{r.data?.text ?? ""}&rdquo;
+                        </p>
+                        <div
+                          className="mt-3 flex items-center justify-end gap-1.5 text-[10px]"
+                          style={{ color: "#5A5A5A" }}
+                        >
+                          <Avatar name={name} size={18} />
+                          <span>— {name}</span>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {isRevealing && (
+        <div className="mt-4 flex-shrink-0 text-center">
+          <div
+            className="text-xl font-semibold tabular-nums"
+            style={{ color: TEAL }}
+          >
+            {cappedX} of {Y} reflections
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 

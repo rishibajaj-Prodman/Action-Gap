@@ -53,6 +53,7 @@ type Status = "not_started" | "live" | "ended";
 type ModalState =
   | { type: "end"; cohort: Cohort }
   | { type: "reset"; cohort: Cohort }
+  | { type: "clear"; cohort: Cohort; rosterSize: number }
   | { type: "force_reveal"; cohort: Cohort; missing: string[] }
   | null;
 
@@ -205,6 +206,24 @@ export default function ControlPage() {
       .eq("cohort", cohort);
   }
 
+  async function clearRoster(cohort: Cohort) {
+    const iso = new Date().toISOString();
+    await supabase.from("responses").delete().eq("cohort", cohort);
+    await supabase.from("participants").delete().eq("cohort", cohort);
+    await supabase
+      .from("sessions")
+      .update({
+        started_at: null,
+        ended_at: null,
+        current_round: "idle",
+        reveal_state: "collecting",
+        updated_at: iso,
+      })
+      .eq("cohort", cohort);
+    setParticipants((prev) => ({ ...prev, [cohort]: [] }));
+    setResponses((prev) => ({ ...prev, [cohort]: [] }));
+  }
+
   async function resetSession(cohort: Cohort) {
     const iso = new Date().toISOString();
     await supabase
@@ -312,6 +331,13 @@ export default function ControlPage() {
             onForceReveal={(missing) => setModal({ type: "force_reveal", cohort, missing })}
             onAskEnd={() => setModal({ type: "end", cohort })}
             onAskReset={() => setModal({ type: "reset", cohort })}
+            onAskClear={() =>
+              setModal({
+                type: "clear",
+                cohort,
+                rosterSize: (participants[cohort] ?? []).length,
+              })
+            }
             onToggleParticipant={(pid, active) => setParticipantActive(cohort, pid, active)}
           />
         ))}
@@ -320,7 +346,7 @@ export default function ControlPage() {
       {modal?.type === "end" && (
         <Modal
           title={`End the ${modal.cohort} session?`}
-          message="This marks the game as complete and clears the roster. Use Reset Session if you want to replay with the same people."
+          message="This marks the game as complete and shows the journey poster. The roster stays on the screen so the room can take a screenshot. Use Clear Roster afterwards to free up the cohort for the next class."
           destructive
           confirmLabel="End Session"
           onCancel={() => setModal(null)}
@@ -340,6 +366,24 @@ export default function ControlPage() {
           onCancel={() => setModal(null)}
           onConfirm={async () => {
             await resetSession(modal.cohort);
+            setModal(null);
+          }}
+        />
+      )}
+
+      {modal?.type === "clear" && (
+        <Modal
+          title={`Clear the ${modal.cohort} roster?`}
+          message={
+            modal.rosterSize > 0
+              ? `This removes all ${modal.rosterSize} ${modal.rosterSize === 1 ? "participant" : "participants"} and rewinds the cohort to a fresh state. Phones will be bounced to the join screen — everyone has to rejoin to play again. Use this between classes, not mid-session.`
+              : "This rewinds the cohort to a fresh state. The roster is already empty."
+          }
+          destructive
+          confirmLabel="Clear Roster"
+          onCancel={() => setModal(null)}
+          onConfirm={async () => {
+            await clearRoster(modal.cohort);
             setModal(null);
           }}
         />
@@ -376,6 +420,7 @@ function CohortColumn({
   onForceReveal,
   onAskEnd,
   onAskReset,
+  onAskClear,
   onToggleParticipant,
 }: {
   cohort: Cohort;
@@ -389,6 +434,7 @@ function CohortColumn({
   onForceReveal: (missing: string[]) => void;
   onAskEnd: () => void;
   onAskReset: () => void;
+  onAskClear: () => void;
   onToggleParticipant: (pid: string, active: boolean) => void;
 }) {
   const cohortColor = getTheme(cohort).primary;
@@ -664,13 +710,22 @@ function CohortColumn({
                 View insights ↗
               </a>
             </div>
-            <button
-              onClick={onAskReset}
-              className="text-left text-xs hover:underline"
-              style={{ color: ASH }}
-            >
-              Reset Session
-            </button>
+            <div className="flex flex-col gap-2 border-t pt-3" style={{ borderColor: HAIRLINE }}>
+              <button
+                onClick={onAskClear}
+                className="rounded-md border px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/5"
+                style={{ borderColor: CLAY, color: CLAY }}
+              >
+                Clear Roster &amp; Start Fresh
+              </button>
+              <button
+                onClick={onAskReset}
+                className="text-left text-xs hover:underline"
+                style={{ color: ASH }}
+              >
+                Reset Session (keep roster)
+              </button>
+            </div>
           </>
         )}
       </div>

@@ -272,13 +272,6 @@ export default function MirrorPoster({
     return map;
   }, [participants]);
 
-  async function reveal() {
-    await supabase
-      .from("sessions")
-      .update({ reveal_state: "reveal", updated_at: new Date().toISOString() })
-      .eq("cohort", cohort);
-  }
-
   const state = session?.reveal_state ?? "collecting";
   const namesList = participants.map((p) => p.name).join(", ");
 
@@ -392,80 +385,148 @@ export default function MirrorPoster({
                 </div>
               </>
             )}
-
-            <button
-              onClick={reveal}
-              disabled={cappedSubmitted === 0}
-              className="mt-10 rounded-full bg-white px-10 py-3 text-lg font-semibold text-black active:scale-95 transition-transform disabled:opacity-30"
-            >
-              Reveal
-            </button>
           </motion.div>
         ) : (
           <motion.div
             key="reveal"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex w-full flex-col items-center"
+            className="relative flex w-full flex-col items-center"
           >
-            <div className="flex w-full max-w-6xl items-center justify-between gap-8">
+            <div className="relative flex w-full max-w-6xl items-end justify-between gap-8">
               <motion.div
-                initial={{ opacity: 0, scale: 0.6, y: 30 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ duration: 0.7, ease: "easeOut" }}
+                initial={{ opacity: 0, y: 50 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
                 className="flex flex-1 flex-col items-center"
               >
-                <div className="text-sm uppercase tracking-[0.3em] text-zinc-500">
-                  Predicted
+                <div className="text-xs uppercase tracking-[0.4em]" style={{ color: ASH }}>
+                  We predicted
                 </div>
-                <div className="mt-4 text-[10rem] font-bold leading-none tabular-nums text-zinc-300">
+                <div
+                  className="mt-3 leading-[0.85] tabular-nums"
+                  style={{
+                    fontFamily: 'Georgia, "Times New Roman", serif',
+                    fontSize: "clamp(7rem, 16vw, 14rem)",
+                    fontWeight: 300,
+                    color: "#5A5650",
+                  }}
+                >
                   {predictedAvg}%
                 </div>
               </motion.div>
 
               <motion.div
-                initial={{ opacity: 0, scale: 0.6 }}
+                initial={{ opacity: 0, scale: 0.7 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.35, duration: 0.5 }}
-                className="flex flex-col items-center text-center text-zinc-500"
+                transition={{ delay: 1.6, duration: 0.5, ease: "easeOut" }}
+                className="flex flex-col items-center pb-8 text-center"
               >
-                <div className="text-xs uppercase tracking-[0.3em]">Gap</div>
-                <div className="mt-2 text-5xl font-bold text-amber-400 tabular-nums">
+                <div className="text-[10px] uppercase tracking-[0.4em]" style={{ color: ASH }}>
+                  Gap
+                </div>
+                <div
+                  className="mt-2 text-5xl font-bold tabular-nums"
+                  style={{ color: cohortColor }}
+                >
                   {gap}%
                 </div>
-                <div className="mt-2 text-3xl text-zinc-700">→</div>
               </motion.div>
 
               <motion.div
-                initial={{ opacity: 0, scale: 0.6, y: 30 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.7, ease: "easeOut" }}
-                className="flex flex-1 flex-col items-center"
+                initial={{ opacity: 0, y: 80, scale: 0.85 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{
+                  delay: 1.9,
+                  duration: 0.7,
+                  ease: [0.34, 1.56, 0.64, 1],
+                }}
+                className="relative flex flex-1 flex-col items-center"
               >
-                <div className="text-sm uppercase tracking-[0.3em] text-zinc-500">
-                  Actual
+                {actualPct > predictedAvg && (
+                  <div className="pointer-events-none absolute inset-0 -top-8">
+                    {["🌿", "✨", "🌱", "✨", "🌿"].map((e, i) => (
+                      <motion.span
+                        key={i}
+                        aria-hidden
+                        className="absolute select-none text-3xl"
+                        style={{ left: `${15 + i * 17}%`, bottom: 0 }}
+                        initial={{ opacity: 0, y: 0, rotate: 0 }}
+                        animate={{
+                          opacity: [0, 1, 1, 0],
+                          y: -260,
+                          rotate: i % 2 === 0 ? 18 : -18,
+                        }}
+                        transition={{
+                          delay: 2.4 + i * 0.12,
+                          duration: 2.6,
+                          times: [0, 0.18, 0.7, 1],
+                          ease: "easeOut",
+                        }}
+                      >
+                        {e}
+                      </motion.span>
+                    ))}
+                  </div>
+                )}
+                <div
+                  className="text-xs uppercase tracking-[0.4em]"
+                  style={{ color: cohortColor }}
+                >
+                  Actually
                 </div>
-                <div className="mt-4 text-[12rem] font-bold leading-none tabular-nums text-white">
+                <div
+                  className="mt-3 leading-[0.85] tabular-nums"
+                  style={{
+                    fontFamily: 'Georgia, "Times New Roman", serif',
+                    fontSize: "clamp(9rem, 20vw, 18rem)",
+                    fontWeight: 700,
+                    color: BONE,
+                  }}
+                >
                   {actualPct}%
                 </div>
               </motion.div>
+
+              <motion.svg
+                className="pointer-events-none absolute inset-0 h-full w-full"
+                viewBox="0 0 100 30"
+                preserveAspectRatio="none"
+              >
+                <motion.path
+                  d="M 22 22 Q 50 4, 78 14"
+                  stroke={cohortColor}
+                  strokeWidth="0.25"
+                  fill="none"
+                  strokeDasharray="1.5 1.5"
+                  initial={{ pathLength: 0, opacity: 0 }}
+                  animate={{ pathLength: 1, opacity: 0.6 }}
+                  transition={{ delay: 2.5, duration: 1.2, ease: "easeOut" }}
+                />
+              </motion.svg>
             </div>
 
             <motion.p
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.9, duration: 0.6 }}
-              className="mt-20 text-3xl font-semibold text-white"
+              transition={{ delay: 3.4, duration: 0.7 }}
+              className="mt-16 max-w-3xl text-center text-3xl font-semibold leading-tight md:text-4xl"
+              style={{ color: BONE, fontFamily: 'Georgia, "Times New Roman", serif' }}
             >
-              The room cares more than the room thinks.
+              {actualPct > predictedAvg
+                ? "The room cares more than the room thinks."
+                : actualPct < predictedAvg
+                  ? "The room thinks it cares more than it does."
+                  : "The room read itself exactly right."}
             </motion.p>
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 1.2, duration: 0.5 }}
-              className="mt-4 text-sm text-zinc-500"
+              transition={{ delay: 4.0, duration: 0.5 }}
+              className="mt-4 text-xs uppercase tracking-[0.3em]"
+              style={{ color: ASH }}
             >
-              Pluralistic ignorance — Andre et al., Nature Climate Change, 2024
+              Pluralistic ignorance · Andre et al., Nature Climate Change, 2024
             </motion.p>
           </motion.div>
         )}
