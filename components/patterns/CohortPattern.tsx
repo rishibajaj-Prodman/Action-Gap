@@ -25,15 +25,24 @@ function SineWavePattern({ color, opacity, className, patternId }: PatternProps)
           id={patternId}
           x="0"
           y="0"
-          width="60"
-          height="20"
+          width="80"
+          height="32"
           patternUnits="userSpaceOnUse"
         >
           <path
-            d="M 0 10 Q 15 0 30 10 T 60 10"
+            d="M 0 16 Q 20 0 40 16 T 80 16"
             fill="none"
             stroke={color}
-            strokeWidth="1"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+          <path
+            d="M 0 24 Q 20 14 40 24 T 80 24"
+            fill="none"
+            stroke={color}
+            strokeWidth="0.7"
+            strokeOpacity="0.6"
+            strokeLinecap="round"
           />
         </pattern>
       </defs>
@@ -54,12 +63,21 @@ function DiagonalHatchPattern({ color, opacity, className, patternId }: PatternP
           id={patternId}
           x="0"
           y="0"
-          width="12"
-          height="12"
+          width="18"
+          height="18"
           patternUnits="userSpaceOnUse"
           patternTransform="rotate(45)"
         >
-          <line x1="0" y1="0" x2="0" y2="12" stroke={color} strokeWidth="1" />
+          <line x1="0" y1="0" x2="0" y2="18" stroke={color} strokeWidth="1.6" />
+          <line
+            x1="9"
+            y1="0"
+            x2="9"
+            y2="18"
+            stroke={color}
+            strokeWidth="0.6"
+            strokeOpacity="0.5"
+          />
         </pattern>
       </defs>
       <rect width="100%" height="100%" fill={`url(#${patternId})`} />
@@ -79,27 +97,34 @@ function TopoCurvePattern({ color, opacity, className, patternId }: PatternProps
           id={patternId}
           x="0"
           y="0"
-          width="120"
-          height="120"
+          width="140"
+          height="140"
           patternUnits="userSpaceOnUse"
         >
           <path
-            d="M 0 30 Q 30 18 60 30 T 120 30"
+            d="M 0 30 Q 35 14 70 30 T 140 30"
             fill="none"
             stroke={color}
-            strokeWidth="1"
+            strokeWidth="1.6"
           />
           <path
-            d="M 0 60 Q 30 72 60 60 T 120 60"
+            d="M 0 60 Q 35 76 70 60 T 140 60"
             fill="none"
             stroke={color}
-            strokeWidth="1"
+            strokeWidth="1.4"
           />
           <path
-            d="M 0 90 Q 30 78 60 90 T 120 90"
+            d="M 0 90 Q 35 74 70 90 T 140 90"
             fill="none"
             stroke={color}
-            strokeWidth="1"
+            strokeWidth="1.2"
+          />
+          <path
+            d="M 0 120 Q 35 132 70 120 T 140 120"
+            fill="none"
+            stroke={color}
+            strokeWidth="0.8"
+            strokeOpacity="0.6"
           />
         </pattern>
       </defs>

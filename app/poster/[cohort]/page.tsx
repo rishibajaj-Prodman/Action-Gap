@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "@/lib/supabase";
 import { useVisibilityRefetch } from "@/lib/useVisibilityRefetch";
@@ -12,6 +12,7 @@ import FunnelPoster from "@/components/posters/FunnelPoster";
 import CourtPoster from "@/components/posters/CourtPoster";
 import ReflectionPoster from "@/components/posters/ReflectionPoster";
 import { Mascot } from "@/components/mascots/Mascot";
+import { LiveMascot } from "@/components/mascots/LiveMascot";
 import { CohortPattern } from "@/components/patterns/CohortPattern";
 import { Avatar } from "@/components/Avatar";
 import { TrailCanvas, type TrailRound } from "@/components/TrailCanvas";
@@ -59,6 +60,8 @@ export default function PosterPage() {
   const [session, setSession] = useState<SessionRow | null>(null);
   const [allParticipants, setAllParticipants] = useState<ParticipantRow[]>([]);
   const [origin, setOrigin] = useState<string>("");
+  const [showRevealFlash, setShowRevealFlash] = useState(false);
+  const prevRevealStateRef = useRef<string | null | undefined>(undefined);
 
   const participants = useMemo(
     () => allParticipants.filter((p) => p.active),
@@ -156,6 +159,19 @@ export default function PosterPage() {
 
   useVisibilityRefetch(fetchData);
 
+  useEffect(() => {
+    const prev = prevRevealStateRef.current;
+    const current = session?.reveal_state;
+    prevRevealStateRef.current = current;
+
+    if (prev === undefined) return;
+    if (current !== "reveal" || prev === "reveal") return;
+
+    setShowRevealFlash(true);
+    const t = setTimeout(() => setShowRevealFlash(false), 1200);
+    return () => clearTimeout(t);
+  }, [session?.reveal_state]);
+
   const status = deriveStatus(session);
   const currentRound = session?.current_round ?? "idle";
   const namesList = useMemo(
@@ -181,7 +197,48 @@ export default function PosterPage() {
       className="relative flex h-screen w-screen flex-col overflow-hidden"
       style={{ backgroundColor: INK, color: BONE }}
     >
-      <CohortPattern cohort={cohort} opacity={0.05} />
+      <CohortPattern cohort={cohort} opacity={0.11} />
+
+      <AnimatePresence>
+        {showRevealFlash && (
+          <motion.div
+            key="poster-reveal-flash"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35 }}
+            className="pointer-events-none fixed inset-0 z-50 flex flex-col items-center justify-center"
+            style={{
+              backgroundColor: "rgba(10, 9, 8, 0.92)",
+              backdropFilter: "blur(8px)",
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, ease: [0.34, 1.56, 0.64, 1] }}
+              className="flex flex-col items-center"
+            >
+              <LiveMascot cohort={cohort} size={120} intensity="active" />
+              <div
+                className="mt-5 text-xs font-bold uppercase tracking-[0.5em]"
+                style={{ color: cohortColor }}
+              >
+                Revealing
+              </div>
+              <div
+                className="mt-3 text-7xl font-bold uppercase tracking-wider"
+                style={{
+                  color: BONE,
+                  fontFamily: 'Georgia, "Times New Roman", serif',
+                }}
+              >
+                {cohort}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {!isCompleteLayout && (
       <header
         className="relative z-10 flex flex-shrink-0 items-start justify-between gap-6 border-b px-12 py-5"
@@ -189,7 +246,7 @@ export default function PosterPage() {
       >
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-4">
-            <Mascot cohort={cohort} size={48} />
+            <LiveMascot cohort={cohort} size={64} />
             <h1
               className="text-5xl font-bold uppercase tracking-wider"
               style={{ color: cohortColor }}
@@ -362,7 +419,7 @@ function FinalPoster({
         className="flex flex-shrink-0 items-end justify-between gap-6 px-12 pt-8 pb-4"
       >
         <div className="flex items-center gap-5">
-          <Mascot cohort={cohort} size={64} />
+          <LiveMascot cohort={cohort} size={80} />
           <div>
             <div
               className="text-[10px] font-bold uppercase tracking-[0.4em]"

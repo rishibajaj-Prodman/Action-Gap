@@ -10,6 +10,7 @@ import FunnelPhone from "@/components/phones/FunnelPhone";
 import CourtPhone from "@/components/phones/CourtPhone";
 import ReflectionPhone from "@/components/phones/ReflectionPhone";
 import JourneyPhone from "@/components/journeys/JourneyPhone";
+import { LiveMascot } from "@/components/mascots/LiveMascot";
 import { Mascot } from "@/components/mascots/Mascot";
 import { CohortPattern } from "@/components/patterns/CohortPattern";
 import { Avatar } from "@/components/Avatar";
@@ -217,7 +218,7 @@ export default function PhoneCohortPage() {
         paddingBottom: "max(env(safe-area-inset-bottom), 3rem)",
       }}
     >
-      <CohortPattern cohort={cohort} opacity={0.03} />
+      <CohortPattern cohort={cohort} opacity={0.07} />
       <AnimatePresence>
         {showRevealFlash && (
           <motion.div
@@ -378,8 +379,9 @@ export default function PhoneCohortPage() {
             )}
 
             {currentRound === null || currentRound === "idle" ? (
-              <div className="flex flex-1 flex-col justify-center">
-                <h1 className="text-5xl font-semibold leading-tight">
+              <div className="flex flex-1 flex-col items-center justify-center text-center">
+                <LiveMascot cohort={cohort} size={96} />
+                <h1 className="mt-6 text-5xl font-semibold leading-tight">
                   You&rsquo;re in.
                 </h1>
                 <p
@@ -398,14 +400,24 @@ export default function PhoneCohortPage() {
                   </p>
                 </div>
               </div>
-            ) : currentRound === "mirror" ? (
-              <MirrorPhone cohort={cohort} />
-            ) : currentRound === "funnel" ? (
-              <FunnelPhone cohort={cohort} />
-            ) : currentRound === "court" ? (
-              <CourtPhone cohort={cohort} />
-            ) : currentRound === "reflection" ? (
-              <ReflectionPhone cohort={cohort} />
+            ) : currentRound === "mirror" ||
+              currentRound === "funnel" ||
+              currentRound === "court" ||
+              currentRound === "reflection" ? (
+              <div className="flex flex-1 flex-col">
+                <div className="mb-4 flex justify-center">
+                  <LiveMascot cohort={cohort} size={72} />
+                </div>
+                {currentRound === "mirror" ? (
+                  <MirrorPhone cohort={cohort} />
+                ) : currentRound === "funnel" ? (
+                  <FunnelPhone cohort={cohort} />
+                ) : currentRound === "court" ? (
+                  <CourtPhone cohort={cohort} />
+                ) : (
+                  <ReflectionPhone cohort={cohort} />
+                )}
+              </div>
             ) : currentRound === "complete" ? (
               <JourneyPhone cohort={cohort} />
             ) : null}

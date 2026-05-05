@@ -2,21 +2,33 @@
   "mirror": {
     "headline": "Pluralistic ignorance is real",
     "claim": "People underestimate climate support by 20–30 percentage points.",
+    "longClaim": "When asked privately, far more people support climate action than they believe their group does. The gap between what we think the room thinks and what the room actually thinks is the dominant barrier — bigger than information, bigger than incentive.",
+    "whyItMatters": "If we believe we're alone, we stay quiet. If we stay quiet, we stay alone. Pluralistic ignorance is self-reinforcing — it makes the silent majority invisible to itself.",
+    "actionFraming": "Say what you think out loud. Make support visible — to yourself and to the people next to you. The data says they're already on your side.",
     "citation": "Andre, Boneva, Chopra & Falk · Nature Climate Change (2024)"
   },
   "funnel": {
     "headline": "The intent–behavior gap",
     "claim": "Intention explains only ~27% of the variance in pro-environmental behavior.",
+    "longClaim": "Climate intentions are abundant. Climate behaviors are scarce. Roughly 73% of the variance between what people say they'll do and what they do is explained by friction, defaults, social context, and the architecture of choice.",
+    "whyItMatters": "Most climate communication targets the wrong end of the funnel. Awareness ≠ belief ≠ intention ≠ action ≠ sustained action. Each step is its own design problem.",
+    "actionFraming": "If you're at one stage, ask what removes the friction to the next. Sustained change usually comes from environment and identity — not from more motivation.",
     "citation": "Bamberg & Möser · Journal of Environmental Psychology (2007)"
   },
   "court": {
-    "headline": "The corporate say-do gap",
+    "headline": "The corporate say–do gap",
     "claim": "63% of Forbes Global 2000 firms have net-zero pledges. Only 7% are credible.",
+    "longClaim": "Most corporate climate claims pass as plausible because the audience can't easily verify them. Greenwashing isn't usually outright lying — it's selective truth, vague timelines, and offset accounting that wouldn't survive if scrutiny were normal.",
+    "whyItMatters": "When greenwashing works, it raises the cost of being honest. Firms that actually decarbonize end up competing against firms that only claim to. Bad incentives compound silently.",
+    "actionFraming": "Demand specifics: what year, what scope (1/2/3), audited by whom, what happens if missed. The follow-up questions are the test — not the press release.",
     "citation": "Net Zero Tracker / NewClimate Institute (2025)"
   },
   "reflection": {
     "headline": "Identity drives behavior",
     "claim": "Behavior follows from salient identity. The dragons we name are the ones we can slay.",
+    "longClaim": "Behavior change sticks when it becomes part of who we say we are. The dragons we name out loud become commitments — to ourselves, to the people listening, and to the version of us we said we'd be.",
+    "whyItMatters": "Vague intentions die quietly. Specific commitments survive accountability. The 30-day window is long enough to do something real and short enough that you'll remember it.",
+    "actionFraming": "Tell one person about your dragon today. Schedule it. The future-you who actually does this thing is the same person who told the present-you to commit out loud.",
     "citation": "Oyserman · Identity-Based Motivation (2009)"
   }
 }

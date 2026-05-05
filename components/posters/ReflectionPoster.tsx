@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { useVisibilityRefetch } from "@/lib/useVisibilityRefetch";
 import { useTheme } from "@/lib/theme";
 import { Mascot } from "@/components/mascots/Mascot";
+import { LiveMascot } from "@/components/mascots/LiveMascot";
 import { Avatar } from "@/components/Avatar";
 import { ResearchInsight } from "@/components/ResearchInsight";
 
@@ -200,12 +201,8 @@ export default function ReflectionPoster({
     prevRevealStateRef.current = current;
 
     if (current === "reveal" && prev && prev !== "reveal" && !locked) {
-      const onTimer = setTimeout(() => setShowInsight(true), 2000);
-      const offTimer = setTimeout(() => setShowInsight(false), 10000);
-      return () => {
-        clearTimeout(onTimer);
-        clearTimeout(offTimer);
-      };
+      const onTimer = setTimeout(() => setShowInsight(true), 2500);
+      return () => clearTimeout(onTimer);
     }
 
     if (current !== "reveal" && showInsight) {
@@ -267,9 +264,11 @@ export default function ReflectionPoster({
             key="collecting"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="mt-8 flex flex-col items-center text-center"
+            exit={{ opacity: 0, scale: 0.92, y: -28 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="mt-4 flex flex-col items-center text-center"
           >
+            <LiveMascot cohort={cohort} size={110} className="mb-3 opacity-90" />
             <div
               className="max-w-2xl text-2xl font-medium leading-snug"
               style={{ color: BONE }}

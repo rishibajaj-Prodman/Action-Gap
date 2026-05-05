@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { useVisibilityRefetch } from "@/lib/useVisibilityRefetch";
 import { useTheme } from "@/lib/theme";
 import { Mascot } from "@/components/mascots/Mascot";
+import { LiveMascot } from "@/components/mascots/LiveMascot";
 import { Signature } from "@/components/signatures/Signature";
 import { Avatar } from "@/components/Avatar";
 import { ResearchInsight } from "@/components/ResearchInsight";
@@ -219,12 +220,8 @@ export default function MirrorPoster({
     prevInsightRevealRef.current = current;
 
     if (current === "reveal" && prev && prev !== "reveal" && !locked) {
-      const onTimer = setTimeout(() => setShowInsight(true), 2000);
-      const offTimer = setTimeout(() => setShowInsight(false), 10000);
-      return () => {
-        clearTimeout(onTimer);
-        clearTimeout(offTimer);
-      };
+      const onTimer = setTimeout(() => setShowInsight(true), 2500);
+      return () => clearTimeout(onTimer);
     }
 
     if (current !== "reveal" && showInsight) {
@@ -327,9 +324,11 @@ export default function MirrorPoster({
             key="collecting"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: -40 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
             className="flex flex-col items-center text-center"
           >
+            <LiveMascot cohort={cohort} size={140} className="mb-4 opacity-90" />
             <h1 className="text-7xl font-bold tracking-tight">The Mirror</h1>
             <p className="mt-4 text-2xl text-zinc-400">
               How many of you think the room cares?

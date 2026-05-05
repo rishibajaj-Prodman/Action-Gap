@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { useVisibilityRefetch } from "@/lib/useVisibilityRefetch";
 import { useTheme } from "@/lib/theme";
 import { Mascot } from "@/components/mascots/Mascot";
+import { LiveMascot } from "@/components/mascots/LiveMascot";
 import { Signature } from "@/components/signatures/Signature";
 import { Avatar } from "@/components/Avatar";
 import { ResearchInsight } from "@/components/ResearchInsight";
@@ -221,12 +222,8 @@ export default function CourtPoster({
     prevInsightRevealRef.current = current;
 
     if (current === "reveal" && prev && prev !== "reveal" && !locked) {
-      const onTimer = setTimeout(() => setShowInsight(true), 2500);
-      const offTimer = setTimeout(() => setShowInsight(false), 10500);
-      return () => {
-        clearTimeout(onTimer);
-        clearTimeout(offTimer);
-      };
+      const onTimer = setTimeout(() => setShowInsight(true), 2800);
+      return () => clearTimeout(onTimer);
     }
 
     if (current !== "reveal" && showInsight) {
@@ -311,9 +308,13 @@ export default function CourtPoster({
               key="collecting"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: -28 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
               className="flex flex-col gap-3"
             >
+              <div className="flex justify-center pb-2">
+                <LiveMascot cohort={cohort} size={110} className="opacity-90" />
+              </div>
               {pairStats.map((s) => {
                 const allVoted = Y > 0 && s.totalVotes >= Y;
                 return (
