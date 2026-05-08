@@ -6,10 +6,11 @@ import { supabase } from "@/lib/supabase";
 import { useVisibilityRefetch } from "@/lib/useVisibilityRefetch";
 import { useTheme } from "@/lib/theme";
 import { Mascot } from "@/components/mascots/Mascot";
-import { LiveMascot } from "@/components/mascots/LiveMascot";
 import { Signature } from "@/components/signatures/Signature";
 import { Avatar } from "@/components/Avatar";
 import { ResearchInsight } from "@/components/ResearchInsight";
+import { StatusPill } from "@/components/StatusPill";
+import { CollectingCard } from "@/components/CollectingCard";
 
 type ResponseRow = {
   id: string;
@@ -205,7 +206,7 @@ export default function MirrorPoster({
     prevRevealStateRef.current = current;
 
     if (current === "reveal" && prev && prev !== "reveal") {
-      const t = setTimeout(() => setShowSignature(true), 1100);
+      const t = setTimeout(() => setShowSignature(true), 1200);
       return () => clearTimeout(t);
     }
 
@@ -229,6 +230,25 @@ export default function MirrorPoster({
     }
   }, [session?.reveal_state, showInsight, locked]);
 
+  const submittedSet = useMemo(
+    () => new Set(responses.map((r) => r.participant_id)),
+    [responses]
+  );
+
+  const totalRoster = participants.length;
+  const submittedCount = useMemo(
+    () =>
+      participants.filter((p) => submittedSet.has(p.participant_id)).length,
+    [participants, submittedSet]
+  );
+  const cappedSubmitted = Math.min(submittedCount, totalRoster);
+
+  const waitingFor = useMemo(
+    () =>
+      participants.filter((p) => !submittedSet.has(p.participant_id)),
+    [participants, submittedSet]
+  );
+
   const { predictedAvg, actualPct, gap } = useMemo(() => {
     const count = responses.length;
     if (count === 0) return { predictedAvg: 0, actualPct: 0, gap: 0 };
@@ -243,26 +263,6 @@ export default function MirrorPoster({
     };
   }, [responses]);
 
-  const submittedSet = useMemo(
-    () => new Set(responses.map((r) => r.participant_id)),
-    [responses]
-  );
-
-  const totalRoster = participants.length;
-  const submittedCount = useMemo(
-    () =>
-      participants.filter((p) => submittedSet.has(p.participant_id)).length,
-    [participants, submittedSet]
-  );
-  const cappedSubmitted = Math.min(submittedCount, totalRoster);
-  const allIn = totalRoster > 0 && cappedSubmitted >= totalRoster;
-
-  const waitingFor = useMemo(
-    () =>
-      participants.filter((p) => !submittedSet.has(p.participant_id)),
-    [participants, submittedSet]
-  );
-
   const nameByPid = useMemo(() => {
     const map = new Map<string, string>();
     for (const p of participants) map.set(p.participant_id, p.name);
@@ -273,24 +273,12 @@ export default function MirrorPoster({
   const namesList = participants.map((p) => p.name).join(", ");
 
   const statusPill = !locked && !compact ? (
-    <div
-      className="pointer-events-none fixed left-1/2 top-32 z-40 -translate-x-1/2 rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-widest backdrop-blur"
-      style={{
-        backgroundColor:
-          state === "reveal"
-            ? "rgba(91, 168, 157, 0.18)"
-            : `${cohortColor}22`,
-        borderColor:
-          state === "reveal"
-            ? "rgba(91, 168, 157, 0.5)"
-            : `${cohortColor}66`,
-        color: state === "reveal" ? TEAL_AFFIRMATIVE : cohortColor,
-      }}
-    >
-      {state === "reveal"
-        ? "● Revealed"
-        : `● Collecting · ${cappedSubmitted} / ${totalRoster}`}
-    </div>
+    <StatusPill
+      cohortColor={cohortColor}
+      state={state === "reveal" ? "reveal" : "collecting"}
+      submitted={cappedSubmitted}
+      total={totalRoster}
+    />
   ) : null;
 
   const toastsEl = (
@@ -326,64 +314,23 @@ export default function MirrorPoster({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 0.9, y: -40 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="flex flex-col items-center text-center"
           >
-            <LiveMascot cohort={cohort} size={140} className="mb-4 opacity-90" />
-            <h1 className="text-7xl font-bold tracking-tight">The Mirror</h1>
-            <p className="mt-4 text-2xl text-zinc-400">
-              How many of you think the room cares?
-            </p>
-
-            {totalRoster === 0 ? (
-              <p className="mt-20 text-2xl" style={{ color: ASH }}>
-                Waiting for participants to join...
-              </p>
-            ) : (
-              <>
-                <div
-                  className="mt-10 text-8xl font-bold tabular-nums transition-colors"
-                  style={{ color: allIn ? TEAL_AFFIRMATIVE : BONE }}
-                >
-                  {cappedSubmitted}
-                  <span
-                    className="text-5xl font-medium"
-                    style={{ color: allIn ? TEAL_AFFIRMATIVE : "#3A3835" }}
-                  >
-                    {" / "}
-                    {totalRoster}
-                  </span>
-                </div>
-                <p
-                  className="mt-4 text-xl uppercase tracking-widest"
-                  style={{ color: allIn ? TEAL_AFFIRMATIVE : ASH }}
-                >
-                  submitted
-                </p>
-
-                <div className="mt-6 h-6 text-sm" style={{ color: ASH }}>
-                  {!allIn && waitingFor.length > 0 && (
-                    <span>
-                      Waiting for:{" "}
-                      <AnimatePresence mode="popLayout">
-                        {waitingFor.map((p, i) => (
-                          <motion.span
-                            key={p.participant_id}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.4 }}
-                            className="inline-block"
-                          >
-                            {p.name}
-                            {i < waitingFor.length - 1 ? ", " : ""}
-                          </motion.span>
-                        ))}
-                      </AnimatePresence>
-                    </span>
-                  )}
-                </div>
-              </>
-            )}
+            <CollectingCard
+              cohort={cohort}
+              count={submittedCount}
+              total={totalRoster}
+              waitingFor={waitingFor}
+              prompt={
+                <>
+                  <h1 className="text-7xl font-bold tracking-tight">
+                    The Mirror
+                  </h1>
+                  <p className="mt-4 text-2xl text-zinc-400">
+                    How many of you think the room cares?
+                  </p>
+                </>
+              }
+            />
           </motion.div>
         ) : (
           <motion.div

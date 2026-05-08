@@ -6,10 +6,11 @@ import { supabase } from "@/lib/supabase";
 import { useVisibilityRefetch } from "@/lib/useVisibilityRefetch";
 import { useTheme } from "@/lib/theme";
 import { Mascot } from "@/components/mascots/Mascot";
-import { LiveMascot } from "@/components/mascots/LiveMascot";
 import { Signature } from "@/components/signatures/Signature";
 import { Avatar } from "@/components/Avatar";
 import { ResearchInsight } from "@/components/ResearchInsight";
+import { StatusPill } from "@/components/StatusPill";
+import { CollectingCard } from "@/components/CollectingCard";
 import ceoPairs from "@/content/ceo-pairs.json";
 
 const COHORT_SINGULAR: Record<string, string> = {
@@ -207,7 +208,7 @@ export default function CourtPoster({
     prevRevealStateRef.current = current;
 
     if (current === "reveal" && prev && prev !== "reveal") {
-      const t = setTimeout(() => setShowSignature(true), 1500);
+      const t = setTimeout(() => setShowSignature(true), 1200);
       return () => clearTimeout(t);
     }
 
@@ -222,7 +223,7 @@ export default function CourtPoster({
     prevInsightRevealRef.current = current;
 
     if (current === "reveal" && prev && prev !== "reveal" && !locked) {
-      const onTimer = setTimeout(() => setShowInsight(true), 2800);
+      const onTimer = setTimeout(() => setShowInsight(true), 2500);
       return () => clearTimeout(onTimer);
     }
 
@@ -273,12 +274,8 @@ export default function CourtPoster({
     [participants, submittedSet]
   );
   const cappedX = Math.min(X, Y);
-  const allIn = Y > 0 && cappedX >= Y;
-  const waitingForNames = useMemo(
-    () =>
-      participants
-        .filter((p) => !submittedSet.has(p.participant_id))
-        .map((p) => p.name),
+  const waitingFor = useMemo(
+    () => participants.filter((p) => !submittedSet.has(p.participant_id)),
     [participants, submittedSet]
   );
   const namesList = useMemo(
@@ -310,42 +307,47 @@ export default function CourtPoster({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0, scale: 0.94, y: -28 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              className="flex flex-col gap-3"
+              className="flex flex-col items-center"
             >
-              <div className="flex justify-center pb-2">
-                <LiveMascot cohort={cohort} size={110} className="opacity-90" />
-              </div>
-              {pairStats.map((s) => {
-                const allVoted = Y > 0 && s.totalVotes >= Y;
-                return (
-                  <div
-                    key={s.pair.id}
-                    className="flex items-center justify-between rounded-md px-5 py-3"
-                    style={{
-                      backgroundColor: CARD_BG,
-                      border: "1px solid rgba(255,255,255,0.08)",
-                    }}
-                  >
-                    <div className="flex items-baseline gap-3">
+              <CollectingCard
+                cohort={cohort}
+                count={X}
+                total={Y}
+                waitingFor={waitingFor}
+              />
+              <div className="mt-8 flex w-full flex-col gap-3">
+                {pairStats.map((s) => {
+                  const allVoted = Y > 0 && s.totalVotes >= Y;
+                  return (
+                    <div
+                      key={s.pair.id}
+                      className="flex items-center justify-between rounded-md px-5 py-3"
+                      style={{
+                        backgroundColor: CARD_BG,
+                        border: "1px solid rgba(255,255,255,0.08)",
+                      }}
+                    >
+                      <div className="flex items-baseline gap-3">
+                        <span
+                          className="text-2xl font-bold uppercase tracking-wider"
+                          style={{ color: cohortColor }}
+                        >
+                          {s.pair.company}
+                        </span>
+                        <span className="text-xs" style={{ color: ASH }}>
+                          {s.pair.year}
+                        </span>
+                      </div>
                       <span
-                        className="text-2xl font-bold uppercase tracking-wider"
-                        style={{ color: cohortColor }}
+                        className="text-base font-semibold tabular-nums"
+                        style={{ color: allVoted ? TEAL : BONE }}
                       >
-                        {s.pair.company}
-                      </span>
-                      <span className="text-xs" style={{ color: ASH }}>
-                        {s.pair.year}
+                        {s.totalVotes} {s.totalVotes === 1 ? "vote" : "votes"}
                       </span>
                     </div>
-                    <span
-                      className="text-base font-semibold tabular-nums"
-                      style={{ color: allVoted ? TEAL : BONE }}
-                    >
-                      {s.totalVotes} {s.totalVotes === 1 ? "vote" : "votes"}
-                    </span>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </motion.div>
           ) : (
             <motion.div
@@ -470,20 +472,6 @@ export default function CourtPoster({
           )}
         </AnimatePresence>
       </div>
-
-      <div className="mt-10 text-center">
-        <div
-          className="text-2xl font-semibold tabular-nums transition-colors"
-          style={{ color: allIn ? TEAL : BONE }}
-        >
-          {cappedX} of {Y} submitted
-        </div>
-        {!allIn && waitingForNames.length > 0 && Y > 0 && (
-          <div className="mt-2 text-sm" style={{ color: ASH }}>
-            Waiting for: {waitingForNames.join(", ")}
-          </div>
-        )}
-      </div>
     </div>
   );
 
@@ -580,22 +568,12 @@ export default function CourtPoster({
   ) : null;
 
   const statusPill = !locked && !compact ? (
-    <div
-      className="pointer-events-none fixed left-1/2 top-32 z-40 -translate-x-1/2 rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-widest backdrop-blur"
-      style={{
-        backgroundColor:
-          isRevealing
-            ? "rgba(91, 168, 157, 0.18)"
-            : `${cohortColor}22`,
-        borderColor:
-          isRevealing
-            ? "rgba(91, 168, 157, 0.5)"
-            : `${cohortColor}66`,
-        color: isRevealing ? TEAL : cohortColor,
-      }}
-    >
-      {isRevealing ? "● Revealed" : `● Collecting · ${cappedX} / ${Y}`}
-    </div>
+    <StatusPill
+      cohortColor={cohortColor}
+      state={isRevealing ? "reveal" : "collecting"}
+      submitted={cappedX}
+      total={Y}
+    />
   ) : null;
 
   if (embedded) {

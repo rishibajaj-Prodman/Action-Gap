@@ -7,7 +7,7 @@ const DATABASE_URL = process.env.DATABASE_URL!;
 const sql = postgres(DATABASE_URL, { ssl: "require" });
 const COHORT = "Dolphins";
 const BASE = "http://localhost:3000";
-const SHOTS = "C:/Users/rishi/Documents/Vault/MBA/Organization Behavior Project/screenshots";
+const SHOTS = "./screenshots";
 
 const NAMES = ["Sara", "Marcus", "Lena", "Pavel", "Eva"];
 const REFLECTIONS = [

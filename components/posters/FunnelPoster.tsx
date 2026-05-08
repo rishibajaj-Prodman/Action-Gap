@@ -6,10 +6,11 @@ import { supabase } from "@/lib/supabase";
 import { useVisibilityRefetch } from "@/lib/useVisibilityRefetch";
 import { useTheme } from "@/lib/theme";
 import { Mascot } from "@/components/mascots/Mascot";
-import { LiveMascot } from "@/components/mascots/LiveMascot";
 import { Signature } from "@/components/signatures/Signature";
 import { Avatar } from "@/components/Avatar";
 import { ResearchInsight } from "@/components/ResearchInsight";
+import { StatusPill } from "@/components/StatusPill";
+import { CollectingCard } from "@/components/CollectingCard";
 
 const COHORT_SINGULAR: Record<string, string> = {
   Dolphins: "Dolphin",
@@ -230,12 +231,8 @@ export default function FunnelPoster({
     [participants, submittedSet]
   );
   const cappedX = Math.min(X, Y);
-  const allIn = Y > 0 && cappedX >= Y;
-  const waitingForNames = useMemo(
-    () =>
-      participants
-        .filter((p) => !submittedSet.has(p.participant_id))
-        .map((p) => p.name),
+  const waitingFor = useMemo(
+    () => participants.filter((p) => !submittedSet.has(p.participant_id)),
     [participants, submittedSet]
   );
   const namesList = useMemo(
@@ -252,7 +249,7 @@ export default function FunnelPoster({
     prevRevealStateRef.current = current;
 
     if (current === "reveal" && prev && prev !== "reveal") {
-      const t = setTimeout(() => setShowSignature(true), 1000);
+      const t = setTimeout(() => setShowSignature(true), 1200);
       return () => clearTimeout(t);
     }
 
@@ -291,38 +288,14 @@ export default function FunnelPoster({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 0.92, y: -32 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="mt-8 flex flex-col items-center text-center"
+            className="mt-8"
           >
-            <LiveMascot cohort={cohort} size={130} className="mb-4 opacity-90" />
-            <div
-              className="text-8xl font-bold tabular-nums transition-colors"
-              style={{ color: allIn ? TEAL : BONE }}
-            >
-              {cappedX}
-              <span
-                className="text-5xl font-medium"
-                style={{ color: allIn ? TEAL : "#3A3835" }}
-              >
-                {" / "}
-                {Y}
-              </span>
-            </div>
-            <p
-              className="mt-4 text-xl uppercase tracking-widest"
-              style={{ color: allIn ? TEAL : ASH }}
-            >
-              submitted
-            </p>
-            <div className="mt-6 h-6 text-sm" style={{ color: ASH }}>
-              {!allIn && waitingForNames.length > 0 && (
-                <span>Waiting for: {waitingForNames.join(", ")}</span>
-              )}
-              {allIn && (
-                <span style={{ color: TEAL }}>
-                  Everyone&rsquo;s in. Reveal from control.
-                </span>
-              )}
-            </div>
+            <CollectingCard
+              cohort={cohort}
+              count={X}
+              total={Y}
+              waitingFor={waitingFor}
+            />
           </motion.div>
         ) : (
           <motion.div
@@ -500,9 +473,19 @@ export default function FunnelPoster({
     <ResearchInsight round="funnel" show={showInsight} />
   ) : null;
 
+  const statusPill = !locked && !compact ? (
+    <StatusPill
+      cohortColor={cohortColor}
+      state={isRevealing ? "reveal" : "collecting"}
+      submitted={cappedX}
+      total={Y}
+    />
+  ) : null;
+
   if (embedded) {
     return (
       <>
+        {statusPill}
         {signatureEl}
         {insightEl}
         {inner}
