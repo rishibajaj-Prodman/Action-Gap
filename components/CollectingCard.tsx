@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import type { ReactNode } from "react";
-import { LiveMascot } from "@/components/mascots/LiveMascot";
+import { RoamingMascot } from "@/components/RoamingMascot";
 
 const TEAL = "#5BA89D";
 const ASH = "#8B8680";
@@ -39,14 +39,8 @@ export function CollectingCard({
   const allIn = total > 0 && cappedCount >= total;
 
   return (
-    <div className="flex flex-col items-center text-center">
-      {showMascot && (
-        <LiveMascot
-          cohort={cohort}
-          size={mascotSize}
-          className="mb-4 opacity-90"
-        />
-      )}
+    <div className="flex w-full flex-col items-center text-center">
+      {showMascot && <RoamingMascot cohort={cohort} size={mascotSize} />}
       {prompt}
 
       {total === 0 ? (

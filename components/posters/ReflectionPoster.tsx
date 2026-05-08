@@ -281,7 +281,7 @@ export default function ReflectionPoster({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 0.92, y: -28 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="mt-4"
+            className="mt-4 w-full"
           >
             <CollectingCard
               cohort={cohort}

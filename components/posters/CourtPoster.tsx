@@ -307,7 +307,7 @@ export default function CourtPoster({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0, scale: 0.94, y: -28 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              className="flex flex-col items-center"
+              className="flex w-full flex-col items-center"
             >
               <CollectingCard
                 cohort={cohort}

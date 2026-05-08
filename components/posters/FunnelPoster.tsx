@@ -288,7 +288,7 @@ export default function FunnelPoster({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 0.92, y: -32 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="mt-8"
+            className="mt-8 w-full"
           >
             <CollectingCard
               cohort={cohort}
