@@ -6,7 +6,9 @@ import { useVisibilityRefetch } from "@/lib/useVisibilityRefetch";
 import { getTheme } from "@/lib/theme";
 import {
   detectBeat,
+  renderTemplate,
   type Beat,
+  type BeatContext,
   type PrimaryActionId,
 } from "@/lib/facilitator-script";
 
@@ -296,26 +298,17 @@ export default function ControlPage() {
     [sessions]
   );
 
-  const primaryActionHandlers: Record<PrimaryActionId, () => Promise<void>> = useMemo(
+  const primaryActionHandlers: Record<
+    PrimaryActionId,
+    (cohort: Cohort) => Promise<void>
+  > = useMemo(
     () => ({
-      start_all: async () => {
-        for (const c of COHORTS) await startSession(c);
-      },
-      to_mirror: async () => {
-        for (const c of COHORTS) await setRound(c, "mirror");
-      },
-      to_funnel: async () => {
-        for (const c of COHORTS) await setRound(c, "funnel");
-      },
-      to_court: async () => {
-        for (const c of COHORTS) await setRound(c, "court");
-      },
-      to_reflection: async () => {
-        for (const c of COHORTS) await setRound(c, "reflection");
-      },
-      end_all: async () => {
-        for (const c of COHORTS) await endSession(c);
-      },
+      start: (c) => startSession(c),
+      to_mirror: (c) => setRound(c, "mirror"),
+      to_funnel: (c) => setRound(c, "funnel"),
+      to_court: (c) => setRound(c, "court"),
+      to_reflection: (c) => setRound(c, "reflection"),
+      end: (c) => endSession(c),
     }),
     []
   );
@@ -349,10 +342,14 @@ export default function ControlPage() {
       </div>
 
       <FacilitatorScript
-        beat={currentBeat}
+        beat={currentBeat.beat}
+        ctx={currentBeat.ctx}
         onPrimaryAction={
-          currentBeat.primaryAction
-            ? primaryActionHandlers[currentBeat.primaryAction]
+          currentBeat.beat.primaryAction && currentBeat.ctx.cohort
+            ? () =>
+                primaryActionHandlers[currentBeat.beat.primaryAction!](
+                  currentBeat.ctx.cohort as Cohort
+                )
             : undefined
         }
       />
@@ -778,9 +775,11 @@ function CohortColumn({
 
 function FacilitatorScript({
   beat,
+  ctx,
   onPrimaryAction,
 }: {
   beat: Beat;
+  ctx: BeatContext;
   onPrimaryAction?: () => Promise<void>;
 }) {
   const [isAdvancing, setIsAdvancing] = useState(false);
@@ -794,6 +793,14 @@ function FacilitatorScript({
       setIsAdvancing(false);
     }
   };
+
+  const label = renderTemplate(beat.label, ctx);
+  const action = renderTemplate(beat.action, ctx);
+  const script = renderTemplate(beat.script, ctx);
+  const primaryActionLabel = beat.primaryActionLabel
+    ? renderTemplate(beat.primaryActionLabel, ctx)
+    : undefined;
+  const next = beat.next ? renderTemplate(beat.next, ctx) : undefined;
 
   return (
     <section
@@ -809,10 +816,10 @@ function FacilitatorScript({
           className="text-xs font-bold uppercase tracking-[0.35em]"
           style={{ color: TEAL }}
         >
-          ● NOW · {beat.label}
+          ● NOW · {label}
         </div>
         <div className="text-xs italic" style={{ color: ASH }}>
-          ▸ {beat.action}
+          ▸ {action}
         </div>
       </div>
 
@@ -823,15 +830,15 @@ function FacilitatorScript({
           fontFamily: 'Georgia, "Times New Roman", serif',
         }}
       >
-        {beat.script}
+        {script}
       </div>
 
-      {(beat.primaryActionLabel || beat.next) && (
+      {(primaryActionLabel || next) && (
         <div
           className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t pt-5"
           style={{ borderColor: HAIRLINE }}
         >
-          {beat.primaryActionLabel && onPrimaryAction ? (
+          {primaryActionLabel && onPrimaryAction ? (
             <button
               type="button"
               onClick={handleClick}
@@ -839,20 +846,20 @@ function FacilitatorScript({
               className="rounded-md px-6 py-3 text-base font-bold transition-transform active:scale-95 disabled:cursor-wait disabled:opacity-60"
               style={{ backgroundColor: TEAL, color: INK }}
             >
-              {isAdvancing ? "Advancing..." : beat.primaryActionLabel}
+              {isAdvancing ? "Advancing..." : primaryActionLabel}
             </button>
           ) : (
             <span
               className="text-sm italic"
               style={{ color: ASH }}
             >
-              No global action — use per-cohort buttons below.
+              No global action — use the cohort column below.
             </span>
           )}
 
-          {beat.next && (
+          {next && (
             <span className="text-xs" style={{ color: ASH }}>
-              Next: {beat.next}
+              Next: {next}
             </span>
           )}
         </div>
