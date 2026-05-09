@@ -12,6 +12,7 @@ import { ResearchInsight } from "@/components/ResearchInsight";
 import { StatusPill } from "@/components/StatusPill";
 import { CollectingCard } from "@/components/CollectingCard";
 import ceoPairs from "@/content/ceo-pairs.json";
+import courtFrontline from "@/content/court-frontline.json";
 
 const COHORT_SINGULAR: Record<string, string> = {
   Dolphins: "Dolphin",
@@ -38,6 +39,11 @@ type Pair = {
 };
 
 const PAIRS: Pair[] = (ceoPairs as { pairs: Pair[] }).pairs;
+
+type FrontlineItem = { headline: string; context: string };
+const FRONTLINE: FrontlineItem[] = (
+  courtFrontline as { items: FrontlineItem[] }
+).items;
 
 type SessionRow = {
   cohort: string;
@@ -223,7 +229,7 @@ export default function CourtPoster({
     prevInsightRevealRef.current = current;
 
     if (current === "reveal" && prev && prev !== "reveal" && !locked) {
-      const onTimer = setTimeout(() => setShowInsight(true), 11500);
+      const onTimer = setTimeout(() => setShowInsight(true), 14000);
       return () => clearTimeout(onTimer);
     }
 
@@ -468,6 +474,46 @@ export default function CourtPoster({
                   </motion.div>
                 );
               })}
+
+              <motion.div
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  delay: 11.0,
+                  duration: 0.9,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+                className="mt-4 border-t pt-4"
+                style={{ borderColor: "rgba(255,255,255,0.10)" }}
+              >
+                <div
+                  className="text-center text-[10px] font-bold uppercase tracking-[0.4em]"
+                  style={{ color: ASH }}
+                >
+                  Today&rsquo;s frontline · 2024–2026
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-4">
+                  {FRONTLINE.map((item, i) => (
+                    <div key={i} className="text-center">
+                      <div
+                        className="text-lg font-bold leading-tight"
+                        style={{
+                          color: BONE,
+                          fontFamily: 'Georgia, "Times New Roman", serif',
+                        }}
+                      >
+                        {item.headline}
+                      </div>
+                      <div
+                        className="mt-1.5 text-xs leading-snug"
+                        style={{ color: ASH }}
+                      >
+                        {item.context}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>

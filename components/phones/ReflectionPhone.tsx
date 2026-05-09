@@ -126,6 +126,9 @@ export default function ReflectionPhone({ cohort }: { cohort: string }) {
       >
         Name the dragon.
       </h1>
+      <p className="mt-1 text-xs italic" style={{ color: ASH }}>
+        Gifford&rsquo;s 7 dragons of inaction &middot; the barriers inside us
+      </p>
 
       <div
         className="mt-3 rounded-md border-l-2 pl-3 text-[11px] leading-relaxed"
