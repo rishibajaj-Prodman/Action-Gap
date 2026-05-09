@@ -249,7 +249,7 @@ export default function FunnelPoster({
     prevRevealStateRef.current = current;
 
     if (current === "reveal" && prev && prev !== "reveal") {
-      const t = setTimeout(() => setShowSignature(true), 1200);
+      const t = setTimeout(() => setShowSignature(true), 10000);
       return () => clearTimeout(t);
     }
 
@@ -264,7 +264,7 @@ export default function FunnelPoster({
     prevInsightRevealRef.current = current;
 
     if (current === "reveal" && prev && prev !== "reveal" && !locked) {
-      const onTimer = setTimeout(() => setShowInsight(true), 2500);
+      const onTimer = setTimeout(() => setShowInsight(true), 13500);
       return () => clearTimeout(onTimer);
     }
 
@@ -309,13 +309,27 @@ export default function FunnelPoster({
                 const width = stats.barWidthPct[i];
                 const count = stats.stageCounts[i];
                 const pct = stats.stagePct[i];
-                const barDelay = i * 0.32;
+                const barDelay = i * 2.5;
+                const isLast = i === STAGE_LABELS.length - 1;
                 return (
                   <motion.div
                     key={label}
                     initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: barDelay, duration: 0.4 }}
+                    animate={
+                      isLast
+                        ? { opacity: 1, y: 0 }
+                        : { opacity: [0, 1, 1, 0.55], y: [12, 0, 0, 0] }
+                    }
+                    transition={
+                      isLast
+                        ? { delay: barDelay, duration: 0.5, ease: [0.16, 1, 0.3, 1] }
+                        : {
+                            delay: barDelay,
+                            duration: 3.0,
+                            times: [0, 0.167, 0.833, 1],
+                            ease: [0.16, 1, 0.3, 1],
+                          }
+                    }
                     className="relative h-20 w-full overflow-hidden rounded-md"
                     style={{
                       backgroundColor: BAR_BG,
@@ -327,8 +341,8 @@ export default function FunnelPoster({
                       initial={{ width: 0 }}
                       animate={{ width: `${width}%` }}
                       transition={{
-                        delay: barDelay + 0.15,
-                        duration: 1.0,
+                        delay: barDelay + 0.3,
+                        duration: 1.4,
                         ease: [0.16, 1, 0.3, 1],
                       }}
                       style={{ backgroundColor: cohortColor }}
@@ -343,7 +357,7 @@ export default function FunnelPoster({
                       <motion.span
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        transition={{ delay: barDelay + 1.0, duration: 0.3 }}
+                        transition={{ delay: barDelay + 1.5, duration: 0.4 }}
                         className="tabular-nums"
                         style={{
                           color: BONE,
@@ -365,9 +379,9 @@ export default function FunnelPoster({
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{
-                  duration: 0.7,
-                  delay: 0.32 * STAGE_LABELS.length + 0.6,
-                  ease: "easeOut",
+                  duration: 1.0,
+                  delay: 11.5,
+                  ease: [0.16, 1, 0.3, 1],
                 }}
                 className="mt-10 flex flex-col items-center text-center"
               >

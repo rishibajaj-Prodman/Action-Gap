@@ -208,7 +208,7 @@ export default function CourtPoster({
     prevRevealStateRef.current = current;
 
     if (current === "reveal" && prev && prev !== "reveal") {
-      const t = setTimeout(() => setShowSignature(true), 1200);
+      const t = setTimeout(() => setShowSignature(true), 9500);
       return () => clearTimeout(t);
     }
 
@@ -223,7 +223,7 @@ export default function CourtPoster({
     prevInsightRevealRef.current = current;
 
     if (current === "reveal" && prev && prev !== "reveal" && !locked) {
-      const onTimer = setTimeout(() => setShowInsight(true), 2500);
+      const onTimer = setTimeout(() => setShowInsight(true), 11500);
       return () => clearTimeout(onTimer);
     }
 
@@ -363,7 +363,7 @@ export default function CourtPoster({
                     : s.verdict === "Real progress"
                       ? TEAL
                       : ASH;
-                const stampDelay = i * 0.32;
+                const stampDelay = i * 1.8;
                 return (
                   <motion.div
                     key={s.pair.id}

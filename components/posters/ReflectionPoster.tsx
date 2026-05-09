@@ -205,7 +205,7 @@ export default function ReflectionPoster({
     prevRevealStateRef.current = current;
 
     if (current === "reveal" && prev && prev !== "reveal" && !locked) {
-      const onTimer = setTimeout(() => setShowInsight(true), 2500);
+      const onTimer = setTimeout(() => setShowInsight(true), 11000);
       return () => clearTimeout(onTimer);
     }
 
@@ -220,7 +220,7 @@ export default function ReflectionPoster({
     prevSignatureRevealRef.current = current;
 
     if (current === "reveal" && prev && prev !== "reveal") {
-      const t = setTimeout(() => setShowSignature(true), 1200);
+      const t = setTimeout(() => setShowSignature(true), 7500);
       return () => clearTimeout(t);
     }
 
@@ -358,7 +358,7 @@ export default function ReflectionPoster({
                   {visibleResponses.map((r, i) => {
                     const tilt = tiltFor(r.id);
                     const name = nameByPid.get(r.participant_id) ?? "Anonymous";
-                    const dropDelay = Math.min(i * 0.09, 1.8);
+                    const dropDelay = Math.min(i * 0.3, 4.5);
                     const isLong = (r.data?.text?.length ?? 0) > 90;
                     return (
                       <motion.div
@@ -410,14 +410,19 @@ export default function ReflectionPoster({
       </AnimatePresence>
 
       {isRevealing && (
-        <div className="mt-4 flex-shrink-0 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 6.0, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="mt-4 flex-shrink-0 text-center"
+        >
           <div
             className="text-xl font-semibold tabular-nums"
             style={{ color: TEAL }}
           >
             {cappedX} of {Y} reflections
           </div>
-        </div>
+        </motion.div>
       )}
     </div>
   );
