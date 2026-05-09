@@ -4,6 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useVisibilityRefetch } from "@/lib/useVisibilityRefetch";
 import { getTheme } from "@/lib/theme";
+import {
+  detectBeat,
+  type Beat,
+  type PrimaryActionId,
+} from "@/lib/facilitator-script";
 
 const COHORTS = ["Dolphins", "Foxes", "Elephants"] as const;
 type Cohort = (typeof COHORTS)[number];
@@ -286,6 +291,35 @@ export default function ControlPage() {
     }
   }
 
+  const currentBeat = useMemo(
+    () => detectBeat({ sessions }),
+    [sessions]
+  );
+
+  const primaryActionHandlers: Record<PrimaryActionId, () => Promise<void>> = useMemo(
+    () => ({
+      start_all: async () => {
+        for (const c of COHORTS) await startSession(c);
+      },
+      to_mirror: async () => {
+        for (const c of COHORTS) await setRound(c, "mirror");
+      },
+      to_funnel: async () => {
+        for (const c of COHORTS) await setRound(c, "funnel");
+      },
+      to_court: async () => {
+        for (const c of COHORTS) await setRound(c, "court");
+      },
+      to_reflection: async () => {
+        for (const c of COHORTS) await setRound(c, "reflection");
+      },
+      end_all: async () => {
+        for (const c of COHORTS) await endSession(c);
+      },
+    }),
+    []
+  );
+
   return (
     <main
       className="min-h-screen w-full px-8 py-6"
@@ -313,6 +347,15 @@ export default function ControlPage() {
           </button>
         </div>
       </div>
+
+      <FacilitatorScript
+        beat={currentBeat}
+        onPrimaryAction={
+          currentBeat.primaryAction
+            ? primaryActionHandlers[currentBeat.primaryAction]
+            : undefined
+        }
+      />
 
       <ShareUrlsPanel />
 
@@ -729,6 +772,91 @@ function CohortColumn({
           </>
         )}
       </div>
+    </section>
+  );
+}
+
+function FacilitatorScript({
+  beat,
+  onPrimaryAction,
+}: {
+  beat: Beat;
+  onPrimaryAction?: () => Promise<void>;
+}) {
+  const [isAdvancing, setIsAdvancing] = useState(false);
+
+  const handleClick = async () => {
+    if (!onPrimaryAction || isAdvancing) return;
+    setIsAdvancing(true);
+    try {
+      await onPrimaryAction();
+    } finally {
+      setIsAdvancing(false);
+    }
+  };
+
+  return (
+    <section
+      className="mt-6 rounded-lg border-2 p-6"
+      style={{
+        borderColor: TEAL,
+        backgroundColor: CARD_BG,
+        boxShadow: "0 4px 24px rgba(91,168,157,0.08)",
+      }}
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <div
+          className="text-xs font-bold uppercase tracking-[0.35em]"
+          style={{ color: TEAL }}
+        >
+          ● NOW · {beat.label}
+        </div>
+        <div className="text-xs italic" style={{ color: ASH }}>
+          ▸ {beat.action}
+        </div>
+      </div>
+
+      <div
+        className="mt-5 whitespace-pre-line text-xl leading-relaxed"
+        style={{
+          color: BONE,
+          fontFamily: 'Georgia, "Times New Roman", serif',
+        }}
+      >
+        {beat.script}
+      </div>
+
+      {(beat.primaryActionLabel || beat.next) && (
+        <div
+          className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t pt-5"
+          style={{ borderColor: HAIRLINE }}
+        >
+          {beat.primaryActionLabel && onPrimaryAction ? (
+            <button
+              type="button"
+              onClick={handleClick}
+              disabled={isAdvancing}
+              className="rounded-md px-6 py-3 text-base font-bold transition-transform active:scale-95 disabled:cursor-wait disabled:opacity-60"
+              style={{ backgroundColor: TEAL, color: INK }}
+            >
+              {isAdvancing ? "Advancing..." : beat.primaryActionLabel}
+            </button>
+          ) : (
+            <span
+              className="text-sm italic"
+              style={{ color: ASH }}
+            >
+              No global action — use per-cohort buttons below.
+            </span>
+          )}
+
+          {beat.next && (
+            <span className="text-xs" style={{ color: ASH }}>
+              Next: {beat.next}
+            </span>
+          )}
+        </div>
+      )}
     </section>
   );
 }

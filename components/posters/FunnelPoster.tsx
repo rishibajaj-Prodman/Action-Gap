@@ -264,7 +264,7 @@ export default function FunnelPoster({
     prevInsightRevealRef.current = current;
 
     if (current === "reveal" && prev && prev !== "reveal" && !locked) {
-      const onTimer = setTimeout(() => setShowInsight(true), 13500);
+      const onTimer = setTimeout(() => setShowInsight(true), 14500);
       return () => clearTimeout(onTimer);
     }
 
@@ -402,6 +402,22 @@ export default function FunnelPoster({
                 >
                   drop-off · concern → sustained
                 </span>
+                <motion.span
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    delay: 12.8,
+                    duration: 0.9,
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
+                  className="mt-6 max-w-3xl text-center text-3xl font-semibold leading-tight md:text-4xl"
+                  style={{
+                    color: BONE,
+                    fontFamily: 'Georgia, "Times New Roman", serif',
+                  }}
+                >
+                  That&rsquo;s the action gap. In this room.
+                </motion.span>
               </motion.div>
             )}
           </motion.div>
