@@ -206,7 +206,7 @@ export default function MirrorPoster({
     prevRevealStateRef.current = current;
 
     if (current === "reveal" && prev && prev !== "reveal") {
-      const t = setTimeout(() => setShowSignature(true), 1200);
+      const t = setTimeout(() => setShowSignature(true), 7500);
       return () => clearTimeout(t);
     }
 
@@ -221,7 +221,7 @@ export default function MirrorPoster({
     prevInsightRevealRef.current = current;
 
     if (current === "reveal" && prev && prev !== "reveal" && !locked) {
-      const onTimer = setTimeout(() => setShowInsight(true), 2500);
+      const onTimer = setTimeout(() => setShowInsight(true), 12500);
       return () => clearTimeout(onTimer);
     }
 
@@ -343,12 +343,16 @@ export default function MirrorPoster({
             <div className="relative flex w-full max-w-6xl items-end justify-between gap-8">
               <motion.div
                 initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+                animate={{ opacity: [0, 1, 1, 0.5], y: [50, 0, 0, 0] }}
+                transition={{
+                  duration: 4,
+                  times: [0, 0.375, 0.75, 1],
+                  ease: [0.16, 1, 0.3, 1],
+                }}
                 className="flex flex-1 flex-col items-center"
               >
                 <div className="text-xs uppercase tracking-[0.4em]" style={{ color: ASH }}>
-                  We predicted
+                  The room said
                 </div>
                 <div
                   className="mt-3 leading-[0.85] tabular-nums"
@@ -366,7 +370,7 @@ export default function MirrorPoster({
               <motion.div
                 initial={{ opacity: 0, scale: 0.7 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 1.6, duration: 0.5, ease: "easeOut" }}
+                transition={{ delay: 6.5, duration: 0.6, ease: "easeOut" }}
                 className="flex flex-col items-center pb-8 text-center"
               >
                 <div className="text-[10px] uppercase tracking-[0.4em]" style={{ color: ASH }}>
@@ -381,12 +385,12 @@ export default function MirrorPoster({
               </motion.div>
 
               <motion.div
-                initial={{ opacity: 0, y: 80, scale: 0.85 }}
+                initial={{ opacity: 0, y: 100, scale: 0.92 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{
-                  delay: 1.9,
-                  duration: 0.7,
-                  ease: [0.34, 1.56, 0.64, 1],
+                  delay: 3.0,
+                  duration: 1.5,
+                  ease: [0.16, 1, 0.3, 1],
                 }}
                 className="relative flex flex-1 flex-col items-center"
               >
@@ -405,7 +409,7 @@ export default function MirrorPoster({
                           rotate: i % 2 === 0 ? 18 : -18,
                         }}
                         transition={{
-                          delay: 2.4 + i * 0.12,
+                          delay: 4.7 + i * 0.12,
                           duration: 2.6,
                           times: [0, 0.18, 0.7, 1],
                           ease: "easeOut",
@@ -448,15 +452,15 @@ export default function MirrorPoster({
                   strokeDasharray="1.5 1.5"
                   initial={{ pathLength: 0, opacity: 0 }}
                   animate={{ pathLength: 1, opacity: 0.6 }}
-                  transition={{ delay: 2.5, duration: 1.2, ease: "easeOut" }}
+                  transition={{ delay: 6.0, duration: 1.0, ease: "easeOut" }}
                 />
               </motion.svg>
             </div>
 
             <motion.p
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 3.4, duration: 0.7 }}
+              transition={{ delay: 9.0, duration: 1.0, ease: [0.16, 1, 0.3, 1] }}
               className="mt-16 max-w-3xl text-center text-3xl font-semibold leading-tight md:text-4xl"
               style={{ color: BONE, fontFamily: 'Georgia, "Times New Roman", serif' }}
             >
@@ -469,7 +473,7 @@ export default function MirrorPoster({
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 4.0, duration: 0.5 }}
+              transition={{ delay: 12.0, duration: 0.6 }}
               className="mt-4 text-xs uppercase tracking-[0.3em]"
               style={{ color: ASH }}
             >
